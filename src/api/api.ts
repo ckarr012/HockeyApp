@@ -1,0 +1,422 @@
+const API_BASE_URL = 'http://localhost:5000/api';
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  role: string;
+  teamId: string;
+  teamName: string;
+  division: string;
+  season: string;
+}
+
+export interface Player {
+  id: string;
+  teamId: string;
+  firstName: string;
+  lastName: string;
+  jerseyNumber: number;
+  position: string;
+  birthDate: string;
+  height: number;
+  weight: number;
+  shoots: string;
+  status: string;
+  injuryNote?: string;
+}
+
+export interface Game {
+  id: string;
+  teamId: string;
+  opponent: string;
+  gameDate: string;
+  location: string;
+  homeAway: string;
+  status: string;
+  teamScore: number | null;
+  opponentScore: number | null;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  type: 'game' | 'practice' | 'film';
+  location?: string;
+  homeAway?: string;
+  status?: string;
+  teamScore?: number | null;
+  opponentScore?: number | null;
+  opponent?: string;
+  focus?: string;
+  duration?: number;
+  url?: string;
+  gameId?: string;
+}
+
+export interface KeyPlayer {
+  name: string;
+  number: number;
+  position: string;
+  notes: string;
+}
+
+export interface ScoutingReport {
+  id: string;
+  teamId: string;
+  gameId: string;
+  opponentName: string;
+  date: string;
+  strengths?: string;
+  weaknesses?: string;
+  keyPlayersJson?: string;
+  tacticalNotes?: string;
+  powerPlayTendency?: string;
+  goalieWeakness?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DashboardData {
+  team: {
+    id: string;
+    name: string;
+    division: string;
+    season: string;
+  };
+  stats: {
+    totalPlayers: number;
+    activePlayers: number;
+    injuredPlayers: number;
+    totalGames: number;
+    wins: number;
+    losses: number;
+    ties: number;
+    upcomingGames: number;
+    totalVideos: number;
+    totalPractices: number;
+  };
+  nextGame: Game | null;
+  nextPractice: {
+    id: string;
+    teamId: string;
+    practiceDate: string;
+    focus: string;
+  } | null;
+}
+
+export async function fetchPlayers(teamId: string): Promise<Player[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/players`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch players: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.players;
+}
+
+export async function fetchGames(teamId: string): Promise<Game[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/games`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch games: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.games;
+}
+
+export async function fetchCalendar(teamId: string): Promise<CalendarEvent[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/calendar`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch calendar: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.events;
+}
+
+export async function fetchDashboard(teamId: string): Promise<DashboardData> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/dashboard`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dashboard: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function login(username: string): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ username }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Login failed: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.user;
+}
+
+export interface Video {
+  id: string;
+  team_id: string;
+  title: string;
+  url?: string;
+  game_id?: string;
+  created_at: string;
+}
+
+export interface Drill {
+  id: string;
+  practice_id: string;
+  name: string;
+  duration?: number;
+  description?: string;
+  drill_order: number;
+}
+
+export interface Practice {
+  id: string;
+  team_id: string;
+  practice_date: string;
+  focus: string;
+  duration?: number;
+  location?: string;
+  drills: Drill[];
+}
+
+export async function fetchVideos(teamId: string): Promise<Video[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/videos`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch videos: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.videos;
+}
+
+export async function createVideo(teamId: string, title: string, url?: string): Promise<Video> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/videos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, url }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create video: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.video;
+}
+
+export async function fetchPractices(teamId: string): Promise<Practice[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/practices`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch practices: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.practices;
+}
+
+export interface Lineup {
+  id: string;
+  team_id: string;
+  name: string;
+  lw_id?: string;
+  c_id?: string;
+  rw_id?: string;
+  ld_id?: string;
+  rd_id?: string;
+  g_id?: string;
+  lw_first_name?: string;
+  lw_last_name?: string;
+  lw_number?: number;
+  c_first_name?: string;
+  c_last_name?: string;
+  c_number?: number;
+  rw_first_name?: string;
+  rw_last_name?: string;
+  rw_number?: number;
+  ld_first_name?: string;
+  ld_last_name?: string;
+  ld_number?: number;
+  rd_first_name?: string;
+  rd_last_name?: string;
+  rd_number?: number;
+  g_first_name?: string;
+  g_last_name?: string;
+  g_number?: number;
+}
+
+export interface PlayerStats {
+  id: string;
+  first_name: string;
+  last_name: string;
+  jersey_number: number;
+  position: string;
+  total_goals: number;
+  total_assists: number;
+  total_points: number;
+  total_shots: number;
+  total_blocks: number;
+  total_pims: number;
+  games_played: number;
+}
+
+export async function fetchLineups(teamId: string): Promise<Lineup[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/lineups`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch lineups: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.lineups;
+}
+
+export async function createLineup(teamId: string, lineupData: any): Promise<Lineup> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/lineups`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(lineupData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create lineup: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.lineup;
+}
+
+export async function updateLineup(lineupId: string, lineupData: any): Promise<Lineup> {
+  const response = await fetch(`${API_BASE_URL}/teams/lineups/${lineupId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(lineupData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update lineup: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.lineup;
+}
+
+export async function fetchTeamStats(teamId: string): Promise<PlayerStats[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/stats`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch stats: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.stats;
+}
+
+export async function recordGameStats(gameId: string, stats: any[]): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/games/${gameId}/stats`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ stats }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to record stats: ${response.statusText}`);
+  }
+}
+
+export async function updatePlayerStatus(playerId: string, status: string, injuryNote?: string): Promise<Player> {
+  const response = await fetch(`${API_BASE_URL}/players/${playerId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status, injury_note: injuryNote }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update player status: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.player;
+}
+
+export async function fetchScoutingReports(teamId: string): Promise<ScoutingReport[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/scouting`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch scouting reports: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.reports;
+}
+
+export async function fetchScoutingReportByGame(gameId: string, teamId: string): Promise<ScoutingReport | null> {
+  const response = await fetch(`${API_BASE_URL}/teams/scouting/games/${gameId}?teamId=${teamId}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch scouting report: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.report;
+}
+
+export async function createScoutingReport(teamId: string, reportData: any): Promise<ScoutingReport> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/scouting`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(reportData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create scouting report: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.report;
+}
+
+export async function updateScoutingReport(reportId: string, reportData: any): Promise<ScoutingReport> {
+  const response = await fetch(`${API_BASE_URL}/teams/scouting/${reportId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(reportData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update scouting report: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.report;
+}
