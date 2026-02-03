@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { CalendarIcon, ClipboardList, FileText } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { CalendarIcon, ClipboardList, FileText, Trophy } from 'lucide-react'
 import { fetchGames, fetchScoutingReportByGame, Game } from '../api/api'
 import StatsEntryModal from './StatsEntryModal'
 
@@ -73,8 +74,12 @@ export default function Schedule({ teamId }: ScheduleProps) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading games...</p>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-ice-500 border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <p className="text-ice-200 text-lg">Loading games...</p>
         </div>
       </div>
     )
@@ -92,20 +97,33 @@ export default function Schedule({ teamId }: ScheduleProps) {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4"
+      >
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Game Schedule</h2>
-          <p className="text-ice-200 mt-1">Manage your game calendar</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow mb-2">Game Schedule</h2>
+          <p className="text-ice-200 text-lg">Manage your game calendar</p>
         </div>
-        <button className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-bold shadow-glow-blue hover:shadow-xl transition-all"
+        >
           + Add Game
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      <div className="glass-strong rounded-lg mb-6 p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="glass-strong rounded-xl shadow-xl border border-white/20 mb-6 p-4"
+      >
         <div className="flex items-center gap-4">
           <select 
-            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+            className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
             style={{ colorScheme: 'dark' }}
           >
             <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>📅 All Games</option>
@@ -113,7 +131,7 @@ export default function Schedule({ teamId }: ScheduleProps) {
             <option value="completed" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✓ Completed</option>
           </select>
           <select 
-            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+            className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
             style={{ colorScheme: 'dark' }}
           >
             <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>📍 All Locations</option>
@@ -121,83 +139,117 @@ export default function Schedule({ teamId }: ScheduleProps) {
             <option value="away" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✈️ Away</option>
           </select>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="space-y-3">
-        <h3 className="text-xl font-bold text-white mb-3">Upcoming Games</h3>
-        {games.filter(g => g.status === 'scheduled').map((game) => (
-          <div key={game.id} className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+      <div className="space-y-6">
+        <h3 className="text-2xl font-bold text-white mb-4 flex items-center">
+          <CalendarIcon className="w-6 h-6 mr-2 text-ice-400" />
+          Upcoming Games
+        </h3>
+        {games.filter(g => g.status === 'scheduled').map((game, index) => (
+          <motion.div
+            key={game.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 + index * 0.1 }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            className="glass-strong rounded-xl shadow-2xl border border-white/20 p-6 hover:shadow-glow-blue transition-all"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <CalendarIcon className="w-6 h-6 text-blue-600" />
-                </div>
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 10 }}
+                  className="w-14 h-14 rounded-xl bg-gradient-to-br from-ice-500 to-ice-600 flex items-center justify-center shadow-lg"
+                >
+                  <CalendarIcon className="w-7 h-7 text-white" />
+                </motion.div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{formatGameDate(game.gameDate)} • {formatGameTime(game.gameDate)}</h3>
-                  <p className="text-gray-600 mt-1">vs {game.opponent}</p>
-                  <p className="text-sm text-gray-500 mt-1">{game.location}</p>
+                  <h3 className="text-xl font-bold text-white">{formatGameDate(game.gameDate)} • {formatGameTime(game.gameDate)}</h3>
+                  <p className="text-ice-200 mt-1 font-semibold text-lg">vs {game.opponent}</p>
+                  <p className="text-sm text-ice-300 mt-1">{game.location}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
                   game.homeAway === 'home' 
-                    ? 'bg-blue-100 text-blue-800' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-ice-500 text-white shadow-glow-blue' 
+                    : 'bg-white/20 text-ice-200'
                 }`}>
-                  {game.homeAway === 'home' ? '🏠 Home' : '🚌 Away'}
+                  {game.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
                 </span>
                 {scoutingReports[game.id] && (
-                  <a
+                  <motion.a
                     href="#/scouting"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center space-x-2"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
                   >
                     <FileText className="w-4 h-4" />
-                    <span>View Scouting Report</span>
-                  </a>
+                    <span>Scouting Report</span>
+                  </motion.a>
                 )}
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors font-semibold"
+                >
                   View Details
-                </button>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
 
-        <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-8">Recent Games</h3>
-        {games.filter(g => g.status === 'completed').map((game) => (
-          <div key={game.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+        <h3 className="text-2xl font-bold text-white mb-4 mt-8 flex items-center">
+          <Trophy className="w-6 h-6 mr-2 text-green-400" />
+          Recent Games
+        </h3>
+        {games.filter(g => g.status === 'completed').map((game, index) => (
+          <motion.div
+            key={game.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 + index * 0.1 }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            className="glass-strong rounded-xl shadow-2xl border border-white/20 p-6 hover:shadow-glow-green transition-all"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                  <CalendarIcon className="w-6 h-6 text-green-600" />
-                </div>
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: -10 }}
+                  className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg"
+                >
+                  <Trophy className="w-7 h-7 text-white" />
+                </motion.div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{formatGameDate(game.gameDate)} • {formatGameTime(game.gameDate)}</h3>
-                  <p className="text-gray-600 mt-1">vs {game.opponent}</p>
-                  <p className="text-sm text-gray-500 mt-1">{game.location}</p>
+                  <h3 className="text-xl font-bold text-white">{formatGameDate(game.gameDate)} • {formatGameTime(game.gameDate)}</h3>
+                  <p className="text-ice-200 mt-1 font-semibold text-lg">vs {game.opponent}</p>
+                  <p className="text-sm text-ice-300 mt-1">{game.location}</p>
                   {formatScore(game) && (
-                    <p className="text-sm font-medium text-green-600 mt-1">Final: {formatScore(game)}</p>
+                    <p className="text-sm font-bold text-green-400 mt-2">Final: {formatScore(game)}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-lg ${
                   game.homeAway === 'home' 
-                    ? 'bg-blue-100 text-blue-800' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-ice-500 text-white shadow-glow-blue' 
+                    : 'bg-white/20 text-ice-200'
                 }`}>
-                  {game.homeAway === 'home' ? '🏠 Home' : '🚌 Away'}
+                  {game.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
                 </span>
-                <button
+                <motion.button
                   onClick={() => handleRecordStats(game)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
                 >
                   <ClipboardList className="w-4 h-4" />
                   <span>Record Stats</span>
-                </button>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 

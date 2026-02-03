@@ -168,11 +168,11 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
     )
   }
 
-  const statusColors = {
-    Watching: 'bg-gray-100 border-gray-300',
-    Contacted: 'bg-blue-50 border-blue-300',
-    Offered: 'bg-purple-50 border-purple-300',
-    Committed: 'bg-green-50 border-green-300'
+  const statusColors: Record<ProspectStatus, string> = {
+    Watching: 'bg-blue-500/20 border-blue-400/50',
+    Contacted: 'bg-yellow-500/20 border-yellow-400/50',
+    Offered: 'bg-purple-500/20 border-purple-400/50',
+    Committed: 'bg-green-500/20 border-green-400/50'
   }
 
   const renderKanbanColumn = (status: ProspectStatus) => {
@@ -180,35 +180,36 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
     
     return (
       <div className="flex-1 min-w-[280px]">
-        <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
+        <div className="glass-strong rounded-xl border border-white/20 p-4 shadow-xl">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">{status}</h3>
-            <span className="px-2 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+            <h3 className="font-bold text-white text-lg">{status}</h3>
+            <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold text-ice-200">
               {columnProspects.length}
             </span>
           </div>
           
           <div className="space-y-3">
             {columnProspects.map(prospect => (
-              <div
+              <motion.div
                 key={prospect.id}
-                className={`p-4 rounded-lg border-2 ${statusColors[status]} hover:shadow-md transition-shadow cursor-pointer`}
+                whileHover={{ scale: 1.02, y: -2 }}
+                className={`p-4 rounded-lg border-2 ${statusColors[status]} hover:shadow-glow-blue transition-all cursor-pointer backdrop-blur-sm`}
                 onClick={() => handleViewDetails(prospect)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h4 className="font-semibold text-gray-900">{prospect.name}</h4>
-                    <p className="text-sm text-gray-600">{prospect.position}</p>
+                    <h4 className="font-bold text-white">{prospect.name}</h4>
+                    <p className="text-sm text-ice-200 font-medium">{prospect.position}</p>
                   </div>
                   {renderStars(prospect.scoutRating)}
                 </div>
                 
                 {prospect.currentTeam && (
-                  <p className="text-xs text-gray-500 mb-2">{prospect.currentTeam}</p>
+                  <p className="text-xs text-ice-300 mb-2 font-medium">{prospect.currentTeam}</p>
                 )}
                 
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center text-gray-500">
+                  <div className="flex items-center text-ice-300 font-medium">
                     <GraduationCap className="w-3 h-3 mr-1" />
                     Class of {prospect.gradYear}
                   </div>
@@ -217,17 +218,17 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
                       e.stopPropagation()
                       handleViewDetails(prospect)
                     }}
-                    className="text-blue-600 hover:text-blue-800 flex items-center"
+                    className="text-ice-400 hover:text-ice-300 flex items-center font-bold"
                   >
                     <Eye className="w-3 h-3 mr-1" />
                     View
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
             
             {columnProspects.length === 0 && (
-              <div className="text-center py-8 text-gray-400 text-sm">
+              <div className="text-center py-8 text-ice-400 text-sm font-medium">
                 No prospects in this stage
               </div>
             )}
@@ -241,8 +242,12 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading recruiting pipeline...</p>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-ice-500 border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <p className="text-ice-200 text-lg">Loading recruiting pipeline...</p>
         </div>
       </div>
     )
@@ -286,8 +291,19 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
 
       {/* Add Prospect Modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowAddForm(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="glass-strong rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900">Add New Prospect</h3>
@@ -441,14 +457,25 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
                 <span>{saving ? 'Saving...' : 'Add Prospect'}</span>
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Prospect Detail Modal */}
       {showDetailModal && selectedProspect && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowDetailModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="glass-strong rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700">
               <div className="flex items-start justify-between">
                 <div className="text-white">
@@ -615,8 +642,8 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
                 Close
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   )

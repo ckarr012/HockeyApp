@@ -45,8 +45,66 @@ const getPracticesWithDrills = async (teamId) => {
   return practicesWithDrills;
 };
 
+const createPractice = async (teamId, practiceData) => {
+  const { getDb, saveDb } = require('../db/database');
+  const { v4: uuidv4 } = require('uuid');
+  
+  const db = await getDb();
+  const practiceId = uuidv4();
+  
+  db.run(
+    `INSERT INTO practices (id, team_id, practice_date, focus, duration, location) VALUES (?, ?, ?, ?, ?, ?)`,
+    [practiceId, teamId, practiceData.practice_date, practiceData.focus, practiceData.duration, practiceData.location]
+  );
+  
+  await saveDb();
+  return practiceId;
+};
+
+const createDrill = async (practiceId, drillData) => {
+  const { getDb, saveDb } = require('../db/database');
+  const { v4: uuidv4 } = require('uuid');
+  
+  const db = await getDb();
+  const drillId = uuidv4();
+  
+  db.run(
+    `INSERT INTO drills (id, practice_id, name, duration, description, drill_order) VALUES (?, ?, ?, ?, ?, ?)`,
+    [drillId, practiceId, drillData.name, drillData.duration, drillData.description, drillData.drill_order]
+  );
+  
+  await saveDb();
+  return drillId;
+};
+
+const deletePractice = async (practiceId) => {
+  const { getDb, saveDb } = require('../db/database');
+  const db = await getDb();
+  
+  // Delete associated drills first
+  db.run('DELETE FROM drills WHERE practice_id = ?', [practiceId]);
+  
+  // Delete the practice
+  db.run('DELETE FROM practices WHERE id = ?', [practiceId]);
+  
+  await saveDb();
+};
+
+const deleteDrill = async (drillId) => {
+  const { getDb, saveDb } = require('../db/database');
+  const db = await getDb();
+  
+  db.run('DELETE FROM drills WHERE id = ?', [drillId]);
+  
+  await saveDb();
+};
+
 module.exports = {
   getPracticesByTeamId,
   getDrillsByPracticeId,
-  getPracticesWithDrills
+  getPracticesWithDrills,
+  createPractice,
+  createDrill,
+  deletePractice,
+  deleteDrill
 };

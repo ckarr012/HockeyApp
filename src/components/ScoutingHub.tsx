@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Plus, Edit2, Shield, TrendingUp, TrendingDown, Target, User as UserIcon, X, Save } from 'lucide-react'
 import { fetchGames, fetchScoutingReports, fetchScoutingReportByGame, createScoutingReport, updateScoutingReport, Game, ScoutingReport, KeyPlayer } from '../api/api'
 import { format, parseISO } from 'date-fns'
@@ -191,33 +192,40 @@ export default function ScoutingHub({ teamId }: ScoutingHubProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+      <div className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-white/5 border-b border-white/10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opponent</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Opponent</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-ice-300 uppercase tracking-wider">Report Status</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-white/10">
               {games.map((game) => {
                 const report = getReportForGame(game.id)
                 return (
-                  <tr key={game.id} className="hover:bg-gray-50">
+                  <motion.tr
+                    key={game.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                    className="transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {format(parseISO(game.gameDate), 'MMM d, yyyy')}
+                      <div className="flex items-center">
+                        <Shield className="w-5 h-5 text-ice-400 mr-2" />
+                        <span className="font-bold text-white">{game.opponent}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-ice-200 font-medium">
+                      <div className="text-sm font-medium text-gray-900">{format(parseISO(game.gameDate), 'MMM d, yyyy')}</div>
                       <div className="text-xs text-gray-500">
                         {format(parseISO(game.gameDate), 'h:mm a')}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{game.opponent}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600">{game.location}</div>
@@ -225,37 +233,42 @@ export default function ScoutingHub({ teamId }: ScoutingHubProps) {
                         {game.homeAway === 'home' ? '🏠 Home' : '🚌 Away'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       {report ? (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          ✓ Complete
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-300 border border-green-500/30">
+                          <Target className="w-3 h-3 mr-1" />
+                          Completed
                         </span>
                       ) : (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
                           Pending
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {report ? (
-                        <button
+                        <motion.button
                           onClick={() => handleEditReport(game)}
-                          className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-medium"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="text-ice-400 hover:text-ice-300 font-bold flex items-center"
                         >
-                          <Edit2 className="w-4 h-4" />
-                          <span>Edit Report</span>
-                        </button>
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Edit Report
+                        </motion.button>
                       ) : (
-                        <button
+                        <motion.button
                           onClick={() => handleCreateReport(game)}
-                          className="inline-flex items-center space-x-1 text-green-600 hover:text-green-800 font-medium"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="text-green-400 hover:text-green-300 font-bold flex items-center"
                         >
-                          <Plus className="w-4 h-4" />
-                          <span>Create Report</span>
-                        </button>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Create Report
+                        </motion.button>
                       )}
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
             </tbody>
@@ -264,9 +277,21 @@ export default function ScoutingHub({ teamId }: ScoutingHubProps) {
       </div>
 
       {/* Scouting Report Form Modal */}
-      {showForm && selectedGame && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
+      <AnimatePresence>
+        {showForm && selectedGame && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+            onClick={() => setShowForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-strong rounded-xl shadow-2xl max-w-4xl w-full my-8 border border-white/20">
             {/* Header */}
             <div className="px-6 py-4 bg-blue-600 text-white rounded-t-lg flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -419,9 +444,10 @@ export default function ScoutingHub({ teamId }: ScoutingHubProps) {
                 <span>{saving ? 'Saving...' : editingReport ? 'Update Report' : 'Save Report'}</span>
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }

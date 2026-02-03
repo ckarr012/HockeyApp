@@ -11,6 +11,7 @@ const playerRoutes = require('./routes/playerRoutes');
 const calendarRoutes = require('./routes/calendarRoutes');
 const scoutingRoutes = require('./routes/scoutingRoutes');
 const recruitingRoutes = require('./routes/recruitingRoutes');
+const dashboardNotesRoutes = require('./routes/dashboardNotesRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,7 @@ app.use('/api/teams', lineupRoutes);
 app.use('/api/teams', statsRoutes);
 app.use('/api/teams', calendarRoutes);
 app.use('/api/teams', scoutingRoutes);
+app.use('/api/teams', dashboardNotesRoutes);
 app.use('/api', recruitingRoutes);
 app.use('/api/players', playerRoutes);
 

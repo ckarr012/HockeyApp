@@ -101,6 +101,16 @@ export interface ProspectVideo {
   createdAt?: string;
 }
 
+export interface DashboardNote {
+  id: string;
+  team_id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DashboardData {
   team: {
     id: string;
@@ -149,6 +159,62 @@ export async function fetchGames(teamId: string): Promise<Game[]> {
   
   const data = await response.json();
   return data.games;
+}
+
+export async function createGame(teamId: string, gameData: {
+  game_date: string;
+  opponent: string;
+  location: string;
+  home_away: string;
+  status?: string;
+}): Promise<{ gameId: string }> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/games`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(gameData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create game: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function updateGameScore(gameId: string, teamScore: number, opponentScore: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/games/${gameId}/score`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ teamScore, opponentScore }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update game score: ${response.statusText}`);
+  }
+}
+
+export async function deleteGame(gameId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/games/${gameId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete game: ${response.statusText}`);
+  }
+}
+
+export async function deleteVideo(videoId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/videos/${videoId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete video: ${response.statusText}`);
+  }
 }
 
 export async function fetchCalendar(teamId: string): Promise<CalendarEvent[]> {
@@ -254,6 +320,42 @@ export async function fetchPractices(teamId: string): Promise<Practice[]> {
   
   const data = await response.json();
   return data.practices;
+}
+
+export async function createPractice(teamId: string, practiceData: {
+  practice_date: string;
+  focus: string;
+  duration: number;
+  location: string;
+  drills: Array<{
+    name: string;
+    duration: number;
+    description: string;
+  }>;
+}): Promise<{ practiceId: string }> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/practices`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(practiceData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create practice: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function deletePractice(practiceId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/practices/${practiceId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete practice: ${response.statusText}`);
+  }
 }
 
 export interface Lineup {
@@ -507,6 +609,73 @@ export async function deleteProspect(prospectId: string, teamId: string): Promis
   
   if (!response.ok) {
     throw new Error(`Failed to delete prospect: ${response.statusText}`);
+  }
+}
+
+// Dashboard Notes API
+export async function fetchDashboardNotes(teamId: string): Promise<DashboardNote[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/notes`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dashboard notes: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.notes;
+}
+
+export async function createDashboardNote(teamId: string, noteData: { title: string; content: string; category?: string }): Promise<{ noteId: string }> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/notes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(noteData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create dashboard note: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function updateDashboardNote(noteId: string, noteData: { title: string; content: string; category?: string }): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/notes/${noteId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(noteData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update dashboard note: ${response.statusText}`);
+  }
+}
+
+export async function deleteDashboardNote(noteId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/notes/${noteId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete dashboard note: ${response.statusText}`);
+  }
+}
+
+// Team Settings API
+export async function updateTeamSettings(teamId: string, settings: { name?: string; season?: string; division?: string }): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/settings`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update team settings: ${response.statusText}`);
   }
 }
 
