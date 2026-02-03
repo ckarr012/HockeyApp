@@ -21,7 +21,23 @@ const getPlayersByTeamId = async (teamId) => {
   return result[0].values.map(row => {
     const player = {};
     columns.forEach((col, i) => player[col] = row[i]);
-    return player;
+    // Transform to camelCase for frontend
+    return {
+      id: player.id,
+      teamId: player.team_id,
+      firstName: player.first_name,
+      lastName: player.last_name,
+      jerseyNumber: player.jersey_number,
+      position: player.position,
+      birthDate: player.birth_date,
+      height: player.height,
+      weight: player.weight,
+      shoots: player.shoots,
+      status: player.status,
+      injuryNote: player.injury_note,
+      createdAt: player.created_at,
+      updatedAt: player.updated_at
+    };
   });
 };
 

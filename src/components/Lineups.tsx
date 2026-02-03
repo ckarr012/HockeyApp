@@ -107,47 +107,57 @@ export default function Lineups({ teamId }: LineupsProps) {
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Lineup Builder</h2>
-          <p className="text-ice-200 mt-1">Create and manage line combinations</p>
+    <div className="p-4 md:p-8 relative min-h-screen">
+      {/* Ice Rink Background */}
+      <div className="absolute inset-0 ice-rink-texture opacity-40 pointer-events-none"></div>
+      
+      {/* Content */}
+      <div className="relative z-10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow flex items-center gap-3">
+              🏒 Lineup Builder
+            </h2>
+            <p className="text-ice-200 mt-1">Create and manage line combinations</p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all flex items-center space-x-2 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? 'Saving...' : 'Save Lineup'}</span>
+          </button>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all flex items-center space-x-2 disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          <span>{saving ? 'Saving...' : 'Save Lineup'}</span>
-        </button>
-      </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-xl font-semibold mb-6">{editingLineup.name}</h3>
+        <div className="glass-strong rounded-xl shadow-2xl border border-white/20 p-6 backdrop-blur-xl">
+          <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <span className="text-ice-400">⚡</span> {editingLineup.name}
+          </h3>
         
         <div className="space-y-6">
           {/* Forwards */}
-          <div className="border-b pb-6">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Forwards
+          <div className="border-b border-white/10 pb-6">
+            <h4 className="text-xl font-bold text-white mb-4 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-ice-400" />
+              ⚡ Forwards
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Left Wing</label>
+                <label className="block text-sm font-bold text-ice-200 mb-2">Left Wing</label>
                 <select
                   value={editingLineup.lw_id || ''}
                   onChange={(e) => updatePosition('lw', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Select Player</option>
+                  <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                   {getPlayersByPosition('wing').map(p => (
                     <option 
                       key={p.id} 
                       value={p.id}
                       disabled={p.status === 'injured'}
-                      className={p.status === 'injured' ? 'text-red-600' : ''}
+                      style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                     >
                       #{p.jerseyNumber} {p.firstName} {p.lastName}
                       {p.status === 'injured' && ' 🚑 INJURED'}
@@ -158,19 +168,20 @@ export default function Lineups({ teamId }: LineupsProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Center</label>
+                <label className="block text-sm font-bold text-ice-200 mb-2">Center</label>
                 <select
                   value={editingLineup.c_id || ''}
                   onChange={(e) => updatePosition('c', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Select Player</option>
+                  <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                   {getPlayersByPosition('center').map(p => (
                     <option 
                       key={p.id} 
                       value={p.id}
                       disabled={p.status === 'injured'}
-                      className={p.status === 'injured' ? 'text-red-600' : ''}
+                      style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                     >
                       #{p.jerseyNumber} {p.firstName} {p.lastName}
                       {p.status === 'injured' && ' 🚑 INJURED'}
@@ -181,19 +192,20 @@ export default function Lineups({ teamId }: LineupsProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Right Wing</label>
+                <label className="block text-sm font-bold text-ice-200 mb-2">Right Wing</label>
                 <select
                   value={editingLineup.rw_id || ''}
                   onChange={(e) => updatePosition('rw', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Select Player</option>
+                  <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                   {getPlayersByPosition('wing').map(p => (
                     <option 
                       key={p.id} 
                       value={p.id}
                       disabled={p.status === 'injured'}
-                      className={p.status === 'injured' ? 'text-red-600' : ''}
+                      style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                     >
                       #{p.jerseyNumber} {p.firstName} {p.lastName}
                       {p.status === 'injured' && ' 🚑 INJURED'}
@@ -206,23 +218,26 @@ export default function Lineups({ teamId }: LineupsProps) {
           </div>
 
           {/* Defense */}
-          <div className="border-b pb-6">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4">Defense</h4>
+          <div className="border-b border-white/10 pb-6">
+            <h4 className="text-xl font-bold text-white mb-4 flex items-center">
+              <span className="text-ice-400">🛡️</span> Defense
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Left Defense</label>
+                <label className="block text-sm font-bold text-ice-200 mb-2">Left Defense</label>
                 <select
                   value={editingLineup.ld_id || ''}
                   onChange={(e) => updatePosition('ld', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Select Player</option>
+                  <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                   {getPlayersByPosition('defense').map(p => (
                     <option 
                       key={p.id} 
                       value={p.id}
                       disabled={p.status === 'injured'}
-                      className={p.status === 'injured' ? 'text-red-600' : ''}
+                      style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                     >
                       #{p.jerseyNumber} {p.firstName} {p.lastName}
                       {p.status === 'injured' && ' 🚑 INJURED'}
@@ -233,19 +248,20 @@ export default function Lineups({ teamId }: LineupsProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Right Defense</label>
+                <label className="block text-sm font-bold text-ice-200 mb-2">Right Defense</label>
                 <select
                   value={editingLineup.rd_id || ''}
                   onChange={(e) => updatePosition('rd', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Select Player</option>
+                  <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                   {getPlayersByPosition('defense').map(p => (
                     <option 
                       key={p.id} 
                       value={p.id}
                       disabled={p.status === 'injured'}
-                      className={p.status === 'injured' ? 'text-red-600' : ''}
+                      style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                     >
                       #{p.jerseyNumber} {p.firstName} {p.lastName}
                       {p.status === 'injured' && ' 🚑 INJURED'}
@@ -259,20 +275,23 @@ export default function Lineups({ teamId }: LineupsProps) {
 
           {/* Goalie */}
           <div>
-            <h4 className="text-lg font-semibold text-gray-700 mb-4">Goalie</h4>
+            <h4 className="text-xl font-bold text-white mb-4 flex items-center">
+              <span className="text-ice-400">🥅</span> Goalie
+            </h4>
             <div className="w-full md:w-1/2">
               <select
                 value={editingLineup.g_id || ''}
                 onChange={(e) => updatePosition('g', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+                style={{ colorScheme: 'dark' }}
               >
-                <option value="">Select Player</option>
+                <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>Select Player</option>
                 {getPlayersByPosition('goalie').map(p => (
                   <option 
                     key={p.id} 
                     value={p.id}
                     disabled={p.status === 'injured'}
-                    className={p.status === 'injured' ? 'text-red-600' : ''}
+                    style={{ backgroundColor: '#1e3a5f', color: 'white' }}
                   >
                     #{p.jerseyNumber} {p.firstName} {p.lastName}
                     {p.status === 'injured' && ' 🚑 INJURED'}
@@ -283,6 +302,7 @@ export default function Lineups({ teamId }: LineupsProps) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

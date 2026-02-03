@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Play, X, Plus } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, Plus, X, Film } from 'lucide-react'
 import { fetchVideos, createVideo, Video } from '../api/api'
 
 interface VideoLibraryProps {
@@ -91,52 +92,80 @@ export default function VideoLibrary({ teamId }: VideoLibraryProps) {
       </div>
 
       {videos.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-12 text-center">
-          <Play className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No videos yet</h3>
-          <p className="text-gray-600 mb-4">Start building your video library by adding your first video</p>
-          <button 
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-strong rounded-xl shadow-2xl border border-white/20 p-12 text-center"
+        >
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Video</span>
-          </button>
-        </div>
+            <Film className="w-20 h-20 text-ice-400 mx-auto mb-4" />
+          </motion.div>
+          <h3 className="text-2xl font-bold text-white mb-2">No videos yet</h3>
+          <p className="text-ice-200 mb-6">Start building your video library by adding your first video</p>
+          <motion.button 
+            onClick={() => setShowModal(true)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all inline-flex items-center space-x-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add First Video</span>
+          </motion.button>
+        </motion.div>
       ) : (
-        <div className="space-y-4">
-          {videos.map((video) => (
-            <div key={video.id} className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="w-40 h-24 bg-gradient-to-br from-blue-900 to-blue-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Play className="w-12 h-12 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{video.title}</h3>
-                  {video.url && (
-                    <a href={video.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm mb-2 block">
-                      {video.url}
-                    </a>
-                  )}
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                    <span>{new Date(video.created_at).toLocaleDateString()}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AnimatePresence>
+            {videos.map((video, index) => (
+              <motion.div 
+                key={video.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ 
+                  y: -8,
+                  transition: { duration: 0.2 }
+                }}
+                className="glass-strong rounded-xl shadow-xl border border-white/20 p-6 hover:shadow-glow-blue transition-all group"
+              >
+                <div className="flex flex-col space-y-4">
+                  <motion.div 
+                    className="relative w-full aspect-video bg-gradient-to-br from-ice-900 to-ice-700 rounded-lg flex items-center justify-center overflow-hidden group-hover:shadow-glow-blue transition-all"
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <div className="absolute inset-0 bg-black/20"></div>
+                    <Play className="w-16 h-16 text-white relative z-10 group-hover:scale-110 transition-transform" />
+                  </motion.div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-ice-300 transition-colors">{video.title}</h3>
+                    <div className="flex items-center space-x-2 text-sm text-ice-300 mb-3">
+                      <Film className="w-4 h-4" />
+                      <span>{new Date(video.created_at).toLocaleDateString()}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      {video.url && (
+                        <motion.a 
+                          href={video.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex-1 px-4 py-2.5 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold text-center shadow-lg hover:shadow-glow-blue transition-all"
+                        >
+                          ▶ Watch Video
+                        </motion.a>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    {video.url && (
-                      <a 
-                        href={video.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                      >
-                        Watch
-                      </a>
-                    )}
-                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
