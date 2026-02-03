@@ -56,9 +56,12 @@ export default function Practice({ teamId }: PracticeProps) {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Practice Planner</h2>
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Practice Planner</h2>
+          <p className="text-ice-200 mt-1">Schedule and organize team practices</p>
+        </div>
       </div>
 
       {practices.length === 0 ? (

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { LogIn } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { LogIn, Shield } from 'lucide-react'
 
 interface LoginProps {
   onLogin: (user: any) => void
@@ -54,19 +55,31 @@ export default function Login({ onLogin }: LoginProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-ice-gradient flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 ice-texture opacity-20"></div>
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="glass-strong rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10 border border-white/20"
+      >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <LogIn className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hockey Coach App</h1>
-          <p className="text-gray-600">Sign in to access your team</p>
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-20 h-20 bg-gradient-to-br from-ice-500 to-ice-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-glow-blue"
+          >
+            <span className="text-4xl">🏒</span>
+          </motion.div>
+          <h1 className="text-4xl font-bold text-white mb-2 text-shadow">Hockey Coach Pro</h1>
+          <p className="text-ice-200">Professional team management platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="username" className="block text-sm font-bold text-ice-200 mb-2">
               Username
             </label>
             <input
@@ -74,47 +87,73 @@ export default function Login({ onLogin }: LoginProps) {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-ice-400 focus:ring-2 focus:ring-ice-500 focus:border-ice-500 transition-all"
               placeholder="Enter your username"
               disabled={loading}
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass border border-goal-500/30 rounded-lg p-3 bg-goal-500/10"
+            >
+              <p className="text-goal-300 text-sm font-semibold">{error}</p>
+            </motion.div>
           )}
 
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full bg-gradient-to-r from-ice-500 to-ice-600 text-white py-3 rounded-lg font-bold hover:shadow-glow-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Signing in...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center">
+                <LogIn className="w-5 h-5 mr-2" />
+                Sign In
+              </span>
+            )}
+          </motion.button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600 text-center mb-3">Quick Login (Demo):</p>
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Shield className="w-4 h-4 text-ice-400" />
+            <p className="text-sm text-ice-300 font-semibold">Quick Demo Login:</p>
+          </div>
           <div className="flex gap-3">
-            <button
+            <motion.button
               onClick={() => quickLogin('Dad')}
-              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 px-4 py-3 glass hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all border border-white/10"
             >
-              Coach Dad<br />
-              <span className="text-xs text-gray-500">College Wildcats</span>
-            </button>
-            <button
+              <div className="font-bold">Coach Dad</div>
+              <div className="text-xs text-ice-300 mt-1">College Wildcats</div>
+            </motion.button>
+            <motion.button
               onClick={() => quickLogin('Smith')}
-              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 px-4 py-3 glass hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all border border-white/10"
             >
-              Coach Smith<br />
-              <span className="text-xs text-gray-500">Junior Rangers</span>
-            </button>
+              <div className="font-bold">Coach Smith</div>
+              <div className="text-xs text-ice-300 mt-1">Junior Rangers</div>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

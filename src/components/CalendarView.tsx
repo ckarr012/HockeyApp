@@ -175,9 +175,12 @@ export default function CalendarView({ teamId }: CalendarViewProps) {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Team Calendar</h2>
+          <p className="text-ice-200 mt-1">Games, practices & team events</p>
+        </div>
         <div className="flex items-center space-x-4">
-          <h2 className="text-3xl font-bold text-gray-900">Team Calendar</h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePreviousMonth}

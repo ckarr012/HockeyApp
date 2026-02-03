@@ -144,6 +144,31 @@ const migrations = [
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (team_id) REFERENCES teams(id),
     FOREIGN KEY (game_id) REFERENCES games(id)
+  )`,
+  
+  `CREATE TABLE IF NOT EXISTS prospects (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    position TEXT NOT NULL,
+    grad_year INTEGER NOT NULL,
+    current_team TEXT,
+    scout_rating INTEGER CHECK(scout_rating >= 1 AND scout_rating <= 5),
+    contact_info TEXT,
+    status TEXT DEFAULT 'Watching' CHECK(status IN ('Watching', 'Contacted', 'Offered', 'Committed')),
+    coaching_notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id)
+  )`,
+  
+  `CREATE TABLE IF NOT EXISTS prospect_videos (
+    id TEXT PRIMARY KEY,
+    prospect_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    video_url TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
   )`
 ];
 

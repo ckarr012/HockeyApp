@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Activity, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Activity, Heart } from 'lucide-react'
 import { fetchPlayers, updatePlayerStatus, Player } from '../api/api'
+import LoadingSpinner from './LoadingSpinner'
 
 interface TrainingRoomProps {
   teamId: string
@@ -70,44 +72,13 @@ export default function TrainingRoom({ teamId }: TrainingRoomProps) {
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle className="w-5 h-5 text-green-600" />
-      case 'injured':
-        return <AlertCircle className="w-5 h-5 text-red-600" />
-      case 'day-to-day':
-        return <Clock className="w-5 h-5 text-yellow-600" />
-      default:
-        return <Activity className="w-5 h-5 text-gray-400" />
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      active: 'bg-green-100 text-green-800',
-      injured: 'bg-red-100 text-red-800',
-      'day-to-day': 'bg-yellow-100 text-yellow-800'
-    }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
-  }
-
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading training room...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingSpinner message="Loading training room..." />
 
   if (error) {
     return (
       <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="glass-strong border border-goal-500/30 rounded-lg p-6 bg-goal-500/10">
+          <p className="text-goal-300 font-semibold text-lg">{error}</p>
         </div>
       </div>
     )
@@ -118,69 +89,96 @@ export default function TrainingRoom({ teamId }: TrainingRoomProps) {
   const dayToDayCount = players.filter(p => p.status === 'day-to-day').length
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Training Room</h2>
-        <div className="flex items-center space-x-4">
-          <div className="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow flex items-center gap-3">
+            <Heart className="w-8 h-8 text-goal-400" />
+            Training Room
+          </h2>
+          <p className="text-ice-200 mt-1">Player health & injury management</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            className="glass px-4 py-2 rounded-lg font-bold status-active"
+          >
             {activeCount} Active
-          </div>
+          </motion.div>
           {dayToDayCount > 0 && (
-            <div className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-semibold">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="glass px-4 py-2 rounded-lg font-bold status-day-to-day"
+            >
               {dayToDayCount} Day-to-Day
-            </div>
+            </motion.div>
           )}
           {injuredCount > 0 && (
-            <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg font-semibold">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="glass px-4 py-2 rounded-lg font-bold status-injured"
+            >
               {injuredCount} Injured
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+      <div className="glass-strong rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-white/5 border-b border-white/10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Injury Note</th>
+                <th className="px-4 md:px-6 py-4 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Player</th>
+                <th className="px-4 md:px-6 py-4 text-left text-xs font-bold text-ice-300 uppercase tracking-wider hidden md:table-cell">Position</th>
+                <th className="px-4 md:px-6 py-4 text-left text-xs font-bold text-ice-300 uppercase tracking-wider">Status</th>
+                <th className="px-4 md:px-6 py-4 text-left text-xs font-bold text-ice-300 uppercase tracking-wider hidden lg:table-cell">Injury Note</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {players.map((player) => (
-                <tr key={player.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+            <tbody className="divide-y divide-white/5">
+              {players.map((player, index) => (
+                <motion.tr 
+                  key={player.id} 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="hover:bg-white/10 transition-colors"
+                >
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-ice-500 to-ice-700 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 shadow-glow-blue">
                         {player.jerseyNumber}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-semibold text-white">
                         {player.firstName} {player.lastName}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600 capitalize">{player.position.replace('_', ' ')}</span>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                    <span className="text-sm text-ice-200 capitalize">{player.position.replace('_', ' ')}</span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(player.status)}
+                  <td className="px-4 md:px-6 py-4">
+                    <div className="flex items-center space-x-3">
                       <select
                         value={player.status}
                         onChange={(e) => handleStatusChange(player.id, e.target.value)}
                         disabled={saving}
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(player.status)} border-0 cursor-pointer disabled:opacity-50`}
+                        className={`px-4 py-2 rounded-full text-xs font-bold border-0 cursor-pointer disabled:opacity-50 transition-all ${
+                          player.status === 'active' ? 'status-active' :
+                          player.status === 'injured' ? 'status-injured' :
+                          'status-day-to-day'
+                        }`}
+                        style={{ 
+                          colorScheme: 'dark'
+                        }}
                       >
-                        <option value="active">Active</option>
-                        <option value="day-to-day">Day-to-Day</option>
-                        <option value="injured">Injured</option>
+                        <option value="active" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✓ Active</option>
+                        <option value="day-to-day" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>⚠ Day-to-Day</option>
+                        <option value="injured" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✕ Injured</option>
                       </select>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4 hidden lg:table-cell">
                     {player.status === 'injured' || player.status === 'day-to-day' ? (
                       <div className="space-y-2">
                         {editingPlayer === player.id ? (
@@ -190,12 +188,12 @@ export default function TrainingRoom({ teamId }: TrainingRoomProps) {
                               value={injuryNote}
                               onChange={(e) => setInjuryNote(e.target.value)}
                               placeholder="e.g., Lower body, out 2 weeks"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                              className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-ice-400 focus:ring-2 focus:ring-ice-500"
                             />
                             <button
                               onClick={() => handleSaveNote(player.id, player.status)}
                               disabled={saving}
-                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                              className="px-3 py-2 bg-ice-500 text-white rounded-lg hover:bg-ice-600 text-sm font-semibold disabled:opacity-50 shadow-glow-blue"
                             >
                               Save
                             </button>
@@ -205,22 +203,22 @@ export default function TrainingRoom({ teamId }: TrainingRoomProps) {
                                 setInjuryNote('')
                               }}
                               disabled={saving}
-                              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium disabled:opacity-50"
+                              className="px-3 py-2 glass text-ice-200 rounded-lg hover:bg-white/20 text-sm font-semibold disabled:opacity-50"
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-900">
-                              {player.injuryNote || <span className="text-gray-400 italic">No details</span>}
+                            <span className="text-sm text-ice-100">
+                              {player.injuryNote || <span className="text-ice-400 italic">No details</span>}
                             </span>
                             <button
                               onClick={() => {
                                 setEditingPlayer(player.id)
                                 setInjuryNote(player.injuryNote || '')
                               }}
-                              className="ml-2 text-sm text-blue-600 hover:text-blue-800"
+                              className="ml-2 text-sm text-ice-400 hover:text-ice-200 font-semibold"
                             >
                               Edit
                             </button>
@@ -228,10 +226,10 @@ export default function TrainingRoom({ teamId }: TrainingRoomProps) {
                         )}
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-400">—</span>
+                      <span className="text-sm text-ice-400">—</span>
                     )}
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>

@@ -70,10 +70,10 @@ export default function Dashboard({ teamId }: DashboardProps) {
   ]
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Welcome back, Coach</h2>
-        <p className="text-gray-600 mt-1">{team.name} • {team.season}</p>
+        <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Welcome back, Coach</h2>
+        <p className="text-ice-200 mt-1 text-lg">{team.name} • {team.season}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

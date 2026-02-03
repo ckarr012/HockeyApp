@@ -451,10 +451,116 @@ const scoutingReportsTeamB = [
   }
 ];
 
+// Prospects data
+const prospectsTeamA = [
+  {
+    id: uuidv4(),
+    team_id: teamAId,
+    name: 'Jake Morrison',
+    position: 'Center',
+    grad_year: 2026,
+    current_team: 'St. Mary\'s High School',
+    scout_rating: 5,
+    contact_info: 'jake.morrison@email.com | (555) 123-4567',
+    status: 'Offered',
+    coaching_notes: 'Elite two-way forward. Excellent hockey IQ and vision. Natural leader on the ice. Would be perfect 1st line center.'
+  },
+  {
+    id: uuidv4(),
+    team_id: teamAId,
+    name: 'Connor Stevens',
+    position: 'Defense',
+    grad_year: 2026,
+    current_team: 'Boston Jr. Bruins',
+    scout_rating: 4,
+    contact_info: 'cstevens@email.com | (555) 234-5678',
+    status: 'Contacted',
+    coaching_notes: 'Strong defensive presence. Good size (6\'2"). Needs work on offensive zone play but solid foundation.'
+  },
+  {
+    id: uuidv4(),
+    team_id: teamAId,
+    name: 'Tyler Bennett',
+    position: 'Right Wing',
+    grad_year: 2027,
+    current_team: 'Riverside Academy',
+    scout_rating: 3,
+    contact_info: 'tbennett@email.com',
+    status: 'Watching',
+    coaching_notes: 'Good skater with developing shot. Needs to improve physical play. Worth monitoring through next season.'
+  }
+];
+
+const prospectsTeamB = [
+  {
+    id: uuidv4(),
+    team_id: teamBId,
+    name: 'Marcus Williams',
+    position: 'Goalie',
+    grad_year: 2026,
+    current_team: 'Metro Valley Stars',
+    scout_rating: 5,
+    contact_info: 'mwilliams@email.com | (555) 345-6789',
+    status: 'Committed',
+    coaching_notes: 'Top goalie prospect in the region. Excellent reflexes and positioning. Committed for Fall 2026 season.'
+  },
+  {
+    id: uuidv4(),
+    team_id: teamBId,
+    name: 'Alex Rodriguez',
+    position: 'Left Wing',
+    grad_year: 2027,
+    current_team: 'Lincoln High School',
+    scout_rating: 4,
+    contact_info: 'arodriguez@email.com',
+    status: 'Watching',
+    coaching_notes: 'Fast skater with good hands. Needs to improve defensive responsibility. High upside player.'
+  }
+];
+
+// Prospect videos
+const prospectVideosTeamA = [
+  {
+    id: uuidv4(),
+    prospect_id: prospectsTeamA[0].id,
+    title: 'Jake Morrison - Season Highlights 2025',
+    video_url: 'https://youtube.com/watch?v=example1'
+  },
+  {
+    id: uuidv4(),
+    prospect_id: prospectsTeamA[0].id,
+    title: 'Jake Morrison - Playoff Performance',
+    video_url: 'https://youtube.com/watch?v=example2'
+  },
+  {
+    id: uuidv4(),
+    prospect_id: prospectsTeamA[1].id,
+    title: 'Connor Stevens - Defensive Reel',
+    video_url: 'https://youtube.com/watch?v=example3'
+  }
+];
+
+const prospectVideosTeamB = [
+  {
+    id: uuidv4(),
+    prospect_id: prospectsTeamB[0].id,
+    title: 'Marcus Williams - Save Compilation',
+    video_url: 'https://youtube.com/watch?v=example4'
+  },
+  {
+    id: uuidv4(),
+    prospect_id: prospectsTeamB[0].id,
+    title: 'Marcus Williams - Championship Game',
+    video_url: 'https://youtube.com/watch?v=example5'
+  }
+];
+
 (async () => {
   try {
     const db = await getDb();
     
+    db.run('DELETE FROM prospect_videos');
+    db.run('DELETE FROM prospects');
     db.run('DELETE FROM scouting_reports');
     db.run('DELETE FROM player_stats');
     db.run('DELETE FROM lineups');
@@ -533,6 +639,19 @@ const scoutingReportsTeamB = [
         [report.id, report.team_id, report.game_id, report.opponent_name, report.date, report.strengths, report.weaknesses, report.key_players_json, report.tactical_notes, report.power_play_tendency, report.goalie_weakness]);
     });
     console.log(`✓ Inserted ${scoutingReportsTeamA.length + scoutingReportsTeamB.length} scouting reports`);
+
+    [...prospectsTeamA, ...prospectsTeamB].forEach(prospect => {
+      db.run(`INSERT INTO prospects (id, team_id, name, position, grad_year, current_team, scout_rating, contact_info, status, coaching_notes) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [prospect.id, prospect.team_id, prospect.name, prospect.position, prospect.grad_year, prospect.current_team, prospect.scout_rating, prospect.contact_info, prospect.status, prospect.coaching_notes]);
+    });
+    console.log(`✓ Inserted ${prospectsTeamA.length + prospectsTeamB.length} prospects`);
+
+    [...prospectVideosTeamA, ...prospectVideosTeamB].forEach(video => {
+      db.run(`INSERT INTO prospect_videos (id, prospect_id, title, video_url) VALUES (?, ?, ?, ?)`,
+        [video.id, video.prospect_id, video.title, video.video_url]);
+    });
+    console.log(`✓ Inserted ${prospectVideosTeamA.length + prospectVideosTeamB.length} prospect videos`);
 
     await saveDb();
     

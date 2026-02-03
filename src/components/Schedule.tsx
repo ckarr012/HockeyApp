@@ -91,31 +91,40 @@ export default function Schedule({ teamId }: ScheduleProps) {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Game Schedule</h2>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Game Schedule</h2>
+          <p className="text-ice-200 mt-1">Manage your game calendar</p>
+        </div>
+        <button className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all">
           + Add Game
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 mb-6 p-4">
-        <div className="flex items-center space-x-4">
-          <select className="px-3 py-2 border border-gray-300 rounded-lg">
-            <option>All Games</option>
-            <option>Upcoming</option>
-            <option>Completed</option>
+      <div className="glass-strong rounded-lg mb-6 p-4">
+        <div className="flex items-center gap-4">
+          <select 
+            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+            style={{ colorScheme: 'dark' }}
+          >
+            <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>📅 All Games</option>
+            <option value="upcoming" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>⏰ Upcoming</option>
+            <option value="completed" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✓ Completed</option>
           </select>
-          <select className="px-3 py-2 border border-gray-300 rounded-lg">
-            <option>All Locations</option>
-            <option>Home</option>
-            <option>Away</option>
+          <select 
+            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
+            style={{ colorScheme: 'dark' }}
+          >
+            <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>📍 All Locations</option>
+            <option value="home" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>🏠 Home</option>
+            <option value="away" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✈️ Away</option>
           </select>
         </div>
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Upcoming Games</h3>
+        <h3 className="text-xl font-bold text-white mb-3">Upcoming Games</h3>
         {games.filter(g => g.status === 'scheduled').map((game) => (
           <div key={game.id} className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between">

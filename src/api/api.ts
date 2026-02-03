@@ -78,6 +78,29 @@ export interface ScoutingReport {
   updatedAt?: string;
 }
 
+export interface Prospect {
+  id: string;
+  teamId: string;
+  name: string;
+  position: string;
+  gradYear: number;
+  currentTeam?: string;
+  scoutRating?: number;
+  contactInfo?: string;
+  status: 'Watching' | 'Contacted' | 'Offered' | 'Committed';
+  coachingNotes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProspectVideo {
+  id: string;
+  prospectId: string;
+  title: string;
+  videoUrl: string;
+  createdAt?: string;
+}
+
 export interface DashboardData {
   team: {
     id: string;
@@ -419,4 +442,87 @@ export async function updateScoutingReport(reportId: string, reportData: any): P
   
   const data = await response.json();
   return data.report;
+}
+
+// Recruiting API functions
+export async function fetchProspects(teamId: string): Promise<Prospect[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/prospects`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch prospects: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.prospects;
+}
+
+export async function fetchProspectDetails(prospectId: string, teamId: string): Promise<{ prospect: Prospect; videos: ProspectVideo[] }> {
+  const response = await fetch(`${API_BASE_URL}/prospects/${prospectId}?teamId=${teamId}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch prospect details: ${response.statusText}`);
+  }
+  
+  return await response.json();
+}
+
+export async function createProspect(teamId: string, prospectData: any): Promise<Prospect> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/prospects`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(prospectData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create prospect: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.prospect;
+}
+
+export async function updateProspect(prospectId: string, prospectData: any): Promise<Prospect> {
+  const response = await fetch(`${API_BASE_URL}/prospects/${prospectId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(prospectData),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to update prospect: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.prospect;
+}
+
+export async function deleteProspect(prospectId: string, teamId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/prospects/${prospectId}?teamId=${teamId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete prospect: ${response.statusText}`);
+  }
+}
+
+export async function addProspectVideo(prospectId: string, teamId: string, videoData: { title: string; videoUrl: string }): Promise<ProspectVideo> {
+  const response = await fetch(`${API_BASE_URL}/prospects/${prospectId}/videos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ teamId, ...videoData }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to add prospect video: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.video;
 }

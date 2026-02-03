@@ -75,12 +75,15 @@ export default function VideoLibrary({ teamId }: VideoLibraryProps) {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Video Library</h2>
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Video Library</h2>
+          <p className="text-ice-200 mt-1">Game film and highlight reels</p>
+        </div>
         <button 
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
           <span>Add Video</span>
