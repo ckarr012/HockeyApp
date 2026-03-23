@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { User } from 'lucide-react'
 import { fetchPlayers, Player } from '../api/api'
 import LoadingSpinner from './LoadingSpinner'
+import AddPlayerModal from './AddPlayerModal'
 
 interface RosterProps {
   teamId: string
@@ -12,6 +13,39 @@ export default function Roster({ teamId }: RosterProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [search, setSearch] = useState('')
+  const [positionFilter, setPositionFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('active')
+
+  const filteredPlayers = players.filter(player => {
+    const matchesSearch = search.trim() === '' || 
+      `${player.firstName} ${player.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+      player.jerseyNumber.toString().includes(search.trim())
+
+    const matchesPosition = positionFilter === '' || (() => {
+      if (positionFilter === 'forwards') return ['center', 'left_wing', 'right_wing'].includes(player.position)
+      if (positionFilter === 'defense') return ['left_defense', 'right_defense'].includes(player.position)
+      if (positionFilter === 'goalies') return player.position === 'goalie'
+      return true
+    })()
+
+    const matchesStatus = statusFilter === '' || player.status === statusFilter
+
+    return matchesSearch && matchesPosition && matchesStatus
+  })
+
+  const reloadPlayers = async () => {
+    try {
+      setLoading(true)
+      const data = await fetchPlayers(teamId)
+      setPlayers(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load players')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     const loadPlayers = async () => {
@@ -49,9 +83,14 @@ export default function Roster({ teamId }: RosterProps) {
       <div className="p-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Team Roster</h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all"
+          >
             + Add Player
-          </button>
+          </motion.button>
         </div>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
           <p className="text-yellow-800 font-medium">No players found</p>
@@ -66,11 +105,12 @@ export default function Roster({ teamId }: RosterProps) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Team Roster</h2>
-          <p className="text-ice-200 mt-1">{players.length} players</p>
+          <p className="text-ice-200 mt-1">{filteredPlayers.length} of {players.length} players</p>
         </div>
         <motion.button 
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => setShowAddModal(true)}
           className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all"
         >
           + Add Player
@@ -79,7 +119,9 @@ export default function Roster({ teamId }: RosterProps) {
 
       <div className="glass-strong rounded-lg mb-6 p-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <select 
+          <select
+            value={positionFilter}
+            onChange={e => setPositionFilter(e.target.value)}
             className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
             style={{ colorScheme: 'dark' }}
           >
@@ -88,16 +130,21 @@ export default function Roster({ teamId }: RosterProps) {
             <option value="defense" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>🛡️ Defense</option>
             <option value="goalies" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>🥅 Goalies</option>
           </select>
-          <select 
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
             className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
             style={{ colorScheme: 'dark' }}
           >
+            <option value="" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>All Statuses</option>
             <option value="active" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✓ Active</option>
             <option value="inactive" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>○ Inactive</option>
             <option value="injured" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>✕ Injured</option>
           </select>
           <input
             type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             placeholder="Search players..."
             className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-ice-400 focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
           />
@@ -120,7 +167,7 @@ export default function Roster({ teamId }: RosterProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {players.map((player, index) => (
+              {filteredPlayers.map((player, index) => (
                 <motion.tr 
                   key={player.id} 
                   initial={{ opacity: 0, y: 20 }}
@@ -165,6 +212,13 @@ export default function Roster({ teamId }: RosterProps) {
           </table>
         </div>
       </div>
+
+      <AddPlayerModal
+        teamId={teamId}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onPlayerAdded={reloadPlayers}
+      />
     </div>
   )
 }

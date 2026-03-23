@@ -1,4 +1,33 @@
 const { getDb, saveDb } = require('../db/database');
+const { v4: uuidv4 } = require('uuid');
+
+const createPlayer = async (teamId, playerData) => {
+  const db = await getDb();
+  const id = uuidv4();
+  const { firstName, lastName, jerseyNumber, position, shoots, height, weight, birthDate, status, injuryNote } = playerData;
+
+  db.run(
+    `INSERT INTO players (id, team_id, first_name, last_name, jersey_number, position, shoots, height, weight, birth_date, status, injury_note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, teamId, firstName, lastName, jerseyNumber, position, shoots ?? null, height ?? null, weight ?? null, birthDate ?? null, status, injuryNote ?? null]
+  );
+  await saveDb();
+
+  return {
+    id,
+    teamId,
+    firstName,
+    lastName,
+    jerseyNumber,
+    position,
+    shoots: shoots ?? null,
+    height: height ?? null,
+    weight: weight ?? null,
+    birthDate: birthDate ?? null,
+    status,
+    injuryNote: injuryNote ?? null,
+  };
+};
 
 const updatePlayerStatus = async (playerId, statusData) => {
   const db = await getDb();
@@ -28,6 +57,7 @@ const getPlayerById = async (playerId) => {
 };
 
 module.exports = {
+  createPlayer,
   updatePlayerStatus,
   getPlayerById
 };

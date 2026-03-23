@@ -169,6 +169,17 @@ const migrations = [
     video_url TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS dashboard_notes (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id)
   )`
 ];
 

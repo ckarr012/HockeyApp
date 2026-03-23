@@ -10,6 +10,7 @@ const {
   deleteVideo,
   updateTeamSettings
 } = require('../models/teamModel');
+const { createPlayer } = require('../models/playerModel');
 
 const getPlayers = async (req, res) => {
   try {
@@ -25,6 +26,28 @@ const getPlayers = async (req, res) => {
     res.json({ players });
   } catch (error) {
     console.error('Error in getPlayers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const addPlayer = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const team = await getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const { firstName, lastName, jerseyNumber, position, shoots, height, weight, birthDate, status, injuryNote } = req.body;
+
+    if (!firstName || !lastName || !jerseyNumber || !position) {
+      return res.status(400).json({ error: 'firstName, lastName, jerseyNumber, and position are required' });
+    }
+
+    const player = await createPlayer(teamId, { firstName, lastName, jerseyNumber, position, shoots, height, weight, birthDate, status: status || 'active', injuryNote });
+    res.status(201).json({ player });
+  } catch (error) {
+    console.error('Error in addPlayer:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -180,6 +203,7 @@ const updateSettings = async (req, res) => {
 
 module.exports = {
   getPlayers,
+  addPlayer,
   getDashboard,
   getGames,
   addGame,

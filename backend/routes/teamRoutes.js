@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { getPlayers, getDashboard, getGames, addGame, updateScore, removeGame, removeVideo, updateSettings } = require('../controllers/teamController');
+const { getPlayers, addPlayer, getDashboard, getGames, addGame, updateScore, removeGame, removeVideo, updateSettings } = require('../controllers/teamController');
 
 router.get('/:teamId/players', getPlayers);
+router.post('/:teamId/players', addPlayer);
 
 router.get('/:teamId/dashboard', getDashboard);
 

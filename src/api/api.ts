@@ -490,6 +490,32 @@ export async function updatePlayerStatus(playerId: string, status: string, injur
   return data.player;
 }
 
+export interface CreatePlayerInput {
+  firstName: string;
+  lastName: string;
+  jerseyNumber: number;
+  position: string;
+  shoots: string;
+  height?: number;
+  weight?: number;
+  birthDate?: string;
+  status: string;
+  injuryNote?: string;
+}
+
+export async function createPlayer(teamId: string, player: CreatePlayerInput): Promise<Player> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/players`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(player),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create player: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.player;
+}
+
 export async function fetchScoutingReports(teamId: string): Promise<ScoutingReport[]> {
   const response = await fetch(`${API_BASE_URL}/teams/${teamId}/scouting`);
   
