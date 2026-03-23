@@ -5,7 +5,8 @@ const {
   getReportByGame,
   createReport,
   updateReport,
-  deleteReport
+  deleteReport,
+  generateAiScoutingReport
 } = require('../controllers/scoutingController');
 
 router.get('/:teamId/scouting', getReports);
@@ -13,5 +14,6 @@ router.get('/scouting/games/:gameId', getReportByGame);
 router.post('/:teamId/scouting', createReport);
 router.put('/scouting/:reportId', updateReport);
 router.delete('/scouting/:reportId', deleteReport);
+router.post('/scouting/ai-generate', generateAiScoutingReport);
 
 module.exports = router;

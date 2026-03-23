@@ -1,625 +1,545 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, TrendingUp, Users, Activity, Trophy, Edit2, Plus, X, Save, Trash2 } from 'lucide-react'
-import { fetchDashboard, fetchDashboardNotes, createDashboardNote, updateDashboardNote, deleteDashboardNote, updateTeamSettings, DashboardData, DashboardNote } from '../api/api'
+import {
+  Calendar, TrendingUp, Trophy, Edit2, Plus, X, Save,
+  Trash2, AlertTriangle, Clock, Activity,
+  Loader2, Target
+} from 'lucide-react'
+import {
+  fetchDashboard, fetchDashboardNotes, fetchTeamStats,
+  createDashboardNote, updateDashboardNote, deleteDashboardNote,
+  updateTeamSettings, DashboardData, DashboardNote, PlayerStats
+} from '../api/api'
+import { format, parseISO, formatDistanceToNow, isFuture } from 'date-fns'
+import LoadingSpinner from './LoadingSpinner'
 
 interface DashboardProps {
   teamId: string
 }
 
+const inputClass = "w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-ice-400 focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all outline-none text-sm"
+const labelClass = "block text-xs font-bold text-ice-400 uppercase tracking-wider mb-2"
+
+const NOTE_CATEGORIES = ['Strategy', 'Defense', 'Offense', 'Special Teams', 'General']
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Strategy: 'bg-ice-500/20 text-ice-300 border-ice-500/30',
+  Defense: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  Offense: 'bg-green-500/20 text-green-300 border-green-500/30',
+  'Special Teams': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  General: 'bg-white/10 text-ice-300 border-white/10',
+}
+
+function Countdown({ targetDate }: { targetDate: string }) {
+  const [timeLeft, setTimeLeft] = useState('')
+
+  useEffect(() => {
+    const update = () => {
+      const target = new Date(targetDate)
+      if (!isFuture(target)) { setTimeLeft('Game time!'); return }
+      setTimeLeft(formatDistanceToNow(target, { addSuffix: false }))
+    }
+    update()
+    const interval = setInterval(update, 60000)
+    return () => clearInterval(interval)
+  }, [targetDate])
+
+  return <span>{timeLeft}</span>
+}
+
 export default function Dashboard({ teamId }: DashboardProps) {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
   const [notes, setNotes] = useState<DashboardNote[]>([])
+  const [topStats, setTopStats] = useState<PlayerStats[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  // Team settings edit state
-  const [showTeamEditModal, setShowTeamEditModal] = useState(false)
-  const [editTeamName, setEditTeamName] = useState('')
+
+  // Team settings
+  const [showTeamModal, setShowTeamModal] = useState(false)
+  const [editName, setEditName] = useState('')
   const [editSeason, setEditSeason] = useState('')
+  const [editDivision, setEditDivision] = useState('')
   const [savingTeam, setSavingTeam] = useState(false)
-  
-  // Notes edit state
+
+  // Notes
   const [showNoteModal, setShowNoteModal] = useState(false)
   const [editingNote, setEditingNote] = useState<DashboardNote | null>(null)
   const [noteTitle, setNoteTitle] = useState('')
   const [noteContent, setNoteContent] = useState('')
-  const [noteCategory, setNoteCategory] = useState('')
+  const [noteCategory, setNoteCategory] = useState('Strategy')
   const [savingNote, setSavingNote] = useState(false)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
 
-  const loadDashboard = async () => {
+  const loadAll = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const [dashData, notesData] = await Promise.all([
+      const [dashData, notesData, statsData] = await Promise.all([
         fetchDashboard(teamId),
-        fetchDashboardNotes(teamId)
+        fetchDashboardNotes(teamId),
+        fetchTeamStats(teamId),
       ])
-      setDashboardData(dashData)
+      setData(dashData)
       setNotes(notesData)
+      setTopStats(statsData.slice(0, 3))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
-      console.error('Error loading dashboard:', err)
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    loadDashboard()
   }, [teamId])
 
-  const handleEditTeam = () => {
-    if (!dashboardData) return
-    setEditTeamName(dashboardData.team.name)
-    setEditSeason(dashboardData.team.season)
-    setShowTeamEditModal(true)
+  useEffect(() => { loadAll() }, [loadAll])
+
+  const openTeamModal = () => {
+    if (!data) return
+    setEditName(data.team.name)
+    setEditSeason(data.team.season)
+    setEditDivision(data.team.division ?? '')
+    setShowTeamModal(true)
   }
 
   const handleSaveTeam = async () => {
     try {
       setSavingTeam(true)
-      await updateTeamSettings(teamId, {
-        name: editTeamName,
-        season: editSeason
-      })
-      setShowTeamEditModal(false)
-      await loadDashboard()
+      await updateTeamSettings(teamId, { name: editName, season: editSeason, division: editDivision })
+      await loadAll()
+      setShowTeamModal(false)
     } catch (err) {
-      console.error('Error updating team settings:', err)
-      alert('Failed to update team settings')
+      console.error(err)
     } finally {
       setSavingTeam(false)
     }
   }
 
-  const handleAddNote = () => {
-    setEditingNote(null)
-    setNoteTitle('')
-    setNoteContent('')
-    setNoteCategory('Strategy')
-    setShowNoteModal(true)
-  }
-
-  const handleEditNote = (note: DashboardNote) => {
-    setEditingNote(note)
-    setNoteTitle(note.title)
-    setNoteContent(note.content)
-    setNoteCategory(note.category || 'Strategy')
+  const openNoteModal = (note?: DashboardNote) => {
+    if (note) {
+      setEditingNote(note)
+      setNoteTitle(note.title)
+      setNoteContent(note.content)
+      setNoteCategory(note.category ?? 'Strategy')
+    } else {
+      setEditingNote(null)
+      setNoteTitle('')
+      setNoteContent('')
+      setNoteCategory('Strategy')
+    }
     setShowNoteModal(true)
   }
 
   const handleSaveNote = async () => {
-    if (!noteTitle || !noteContent) {
-      alert('Please fill in all fields')
-      return
-    }
-
+    if (!noteTitle.trim() || !noteContent.trim()) return
     try {
       setSavingNote(true)
       if (editingNote) {
-        await updateDashboardNote(editingNote.id, {
-          title: noteTitle,
-          content: noteContent,
-          category: noteCategory
-        })
+        await updateDashboardNote(editingNote.id, { title: noteTitle, content: noteContent, category: noteCategory })
       } else {
-        await createDashboardNote(teamId, {
-          title: noteTitle,
-          content: noteContent,
-          category: noteCategory
-        })
+        await createDashboardNote(teamId, { title: noteTitle, content: noteContent, category: noteCategory })
       }
+      await loadAll()
       setShowNoteModal(false)
-      await loadDashboard()
     } catch (err) {
-      console.error('Error saving note:', err)
-      alert('Failed to save note')
+      console.error(err)
     } finally {
       setSavingNote(false)
     }
   }
 
   const handleDeleteNote = async (noteId: string) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
-
     try {
+      setDeletingNoteId(noteId)
       await deleteDashboardNote(noteId)
-      await loadDashboard()
+      setNotes(prev => prev.filter(n => n.id !== noteId))
     } catch (err) {
-      console.error('Error deleting note:', err)
-      alert('Failed to delete note')
+      console.error(err)
+    } finally {
+      setDeletingNoteId(null)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-ice-500 border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <p className="text-ice-200 text-lg">Loading dashboard...</p>
-        </div>
+  if (loading) return <LoadingSpinner message="Loading command center..." />
+
+  if (error) return (
+    <div className="p-8">
+      <div className="glass-strong border border-goal-500/30 rounded-xl p-6 bg-goal-500/10">
+        <p className="text-goal-300 font-semibold">Error loading dashboard</p>
+        <p className="text-goal-200 text-sm mt-1">{error}</p>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 font-medium">Error loading dashboard</p>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
-        </div>
-      </div>
-    )
-  }
+  if (!data) return null
 
-  if (!dashboardData) {
-    return (
-      <div className="p-8">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">No dashboard data available</p>
-        </div>
-      </div>
-    )
-  }
-
-  const { team, stats, nextGame, nextPractice } = dashboardData
-  const winRate = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0
-
-  const statCards = [
-    { label: 'Games Played', value: stats.totalGames, icon: Calendar, color: 'ice', gradient: 'from-ice-500 to-ice-600' },
-    { label: 'Win Rate', value: `${winRate}%`, icon: Trophy, color: 'green', gradient: 'from-green-500 to-emerald-600' },
-    { label: 'Record', value: `${stats.wins}-${stats.losses}-${stats.ties}`, icon: TrendingUp, color: 'blue', gradient: 'from-blue-500 to-cyan-600' },
-  ]
+  const { team, stats, nextGame, nextPractice, recentGames, injuredPlayersList } = data
+  const winPct = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0
+  const practiceDate = nextPractice?.practiceDate || nextPractice?.practice_date
 
   return (
-    <div className="p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8 flex items-start justify-between"
-      >
+    <div className="p-4 md:p-8 space-y-6">
+
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow mb-2">Welcome back, Coach</h2>
-          <p className="text-ice-200 text-lg">{team.name} • {team.season}</p>
+          <p className="text-ice-400 text-sm font-semibold uppercase tracking-widest mb-1">Command Center</p>
+          <h2 className="text-3xl md:text-4xl font-black text-white text-shadow">{team.name}</h2>
+          <p className="text-ice-300 mt-1">{team.division} · {team.season}</p>
         </div>
-        <motion.button
-          onClick={handleEditTeam}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          title="Edit team settings"
-        >
-          <Edit2 className="w-5 h-5 text-ice-400" />
-        </motion.button>
+        <button onClick={openTeamModal} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Edit team settings">
+          <Edit2 className="w-4 h-4 text-ice-400" />
+        </button>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {statCards.map((card, index) => {
-          const Icon = card.icon
-          return (
-            <motion.div
-              key={card.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -8, transition: { duration: 0.2 } }}
-              className="glass-strong rounded-xl shadow-2xl border border-white/20 p-6 relative overflow-hidden group cursor-pointer"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-semibold text-ice-200 uppercase tracking-wide">{card.label}</p>
-                  <motion.div
-                    whileHover={{ rotate: 360, scale: 1.2 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <Icon className={`w-8 h-8 text-${card.color}-400`} />
-                  </motion.div>
-                </div>
-                <motion.p
-                  className="text-4xl font-bold text-white"
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: index * 0.1 + 0.2, type: "spring", stiffness: 200 }}
-                >
-                  {card.value}
-                </motion.p>
-              </div>
-            </motion.div>
-          )
-        })}
+      {/* Top stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Record', value: `${stats.wins}-${stats.losses}-${stats.ties}`, sub: `${winPct}% win rate`, icon: '🏆', color: 'from-yellow-500/10 to-amber-500/10 border-yellow-500/20' },
+          { label: 'Active Players', value: stats.activePlayers, sub: `${stats.totalPlayers} total`, icon: '🏒', color: 'from-green-500/10 to-emerald-500/10 border-green-500/20' },
+          { label: 'Injured', value: stats.injuredPlayers, sub: stats.injuredPlayers > 0 ? 'on IR' : 'full strength!', icon: '🚑', color: stats.injuredPlayers > 0 ? 'from-goal-500/10 to-goal-600/10 border-goal-500/20' : 'from-green-500/10 to-emerald-500/10 border-green-500/20' },
+          { label: 'Upcoming Games', value: stats.upcomingGames, sub: `${stats.totalGames} total`, icon: '📅', color: 'from-ice-500/10 to-ice-600/10 border-ice-500/20' },
+        ].map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className={`glass-strong rounded-xl p-5 border bg-gradient-to-br ${card.color}`}
+          >
+            <div className="text-2xl mb-2">{card.icon}</div>
+            <p className={labelClass}>{card.label}</p>
+            <p className="text-2xl font-black text-white">{card.value}</p>
+            <p className="text-xs text-ice-400 mt-0.5">{card.sub}</p>
+          </motion.div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Next Game */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-          className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden"
-        >
-          <div className="px-6 py-4 bg-white/5 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-ice-400" />
-              Next Game
-            </h3>
-          </div>
-          <div className="p-6">
-            {nextGame ? (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="p-4 bg-gradient-to-br from-ice-900/50 to-ice-800/50 rounded-lg border border-ice-500/30"
-              >
-                <div>
-                  <p className="font-bold text-white text-lg">
-                    {new Date(nextGame.gameDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {nextGame.opponent}
-                  </p>
-                  <p className="text-sm text-ice-200 mt-1">
-                    {new Date(nextGame.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} • {nextGame.location}
-                  </p>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* LEFT COLUMN — Next Game + Next Practice + Injury Report */}
+        <div className="space-y-4">
+
+          {/* Next Game */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-ice-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Next Game</h3>
+            </div>
+            <div className="p-5">
+              {nextGame ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-ice-400 uppercase tracking-wider mb-1">Opponent</p>
+                    <p className="text-xl font-black text-white">{nextGame.opponent}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-ice-300">
+                    <Clock className="w-3.5 h-3.5 text-ice-500" />
+                    <span>{format(parseISO(nextGame.gameDate), 'MMM d · h:mm a')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-ice-300">
+                    <Target className="w-3.5 h-3.5 text-ice-500" />
+                    <span>{nextGame.location}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${nextGame.homeAway === 'home' ? 'bg-ice-500/20 text-ice-300 border border-ice-500/30' : 'bg-white/10 text-ice-300 border border-white/10'}`}>
+                      {nextGame.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                      <Clock className="w-3 h-3" />
+                      <Countdown targetDate={nextGame.gameDate} />
+                    </div>
+                  </div>
                 </div>
-                <span className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-bold ${
-                  nextGame.homeAway === 'home' 
-                    ? 'bg-ice-500 text-white shadow-glow-blue' 
-                    : 'bg-white/20 text-ice-200'
-                }`}>
-                  {nextGame.homeAway === 'home' ? '🏠 Home' : '✈️ Away'}
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-ice-500 text-sm">No upcoming games</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Next Practice */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-green-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Next Practice</h3>
+            </div>
+            <div className="p-5">
+              {nextPractice && practiceDate ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-ice-300">
+                    <Clock className="w-3.5 h-3.5 text-ice-500" />
+                    <span>{format(parseISO(practiceDate), 'MMM d · h:mm a')}</span>
+                  </div>
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <p className="text-xs font-bold text-green-400 uppercase tracking-wider mb-1">Focus</p>
+                    <p className="text-sm font-semibold text-white">⚡ {nextPractice.focus}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-ice-500 text-sm">No upcoming practices</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Injury Report */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-goal-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Injury Report</h3>
+              {injuredPlayersList.length > 0 && (
+                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-goal-500/20 text-goal-300 border border-goal-500/30">
+                  {injuredPlayersList.length}
                 </span>
-              </motion.div>
-            ) : (
-              <p className="text-ice-300 text-center py-8">No upcoming games scheduled</p>
-            )}
-          </div>
-        </motion.div>
+              )}
+            </div>
+            <div className="p-5">
+              {injuredPlayersList.length === 0 ? (
+                <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
+                  <span>✓</span> Full strength — no injuries!
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {injuredPlayersList.map((player, i) => (
+                    <motion.div key={player.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }} className="flex items-start gap-3 p-3 bg-goal-500/10 border border-goal-500/20 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-goal-500/20 flex items-center justify-center text-xs font-bold text-goal-300 shrink-0">
+                        {player.jerseyNumber}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{player.firstName} {player.lastName}</p>
+                        <p className="text-xs text-goal-300 truncate">{player.injuryNote || 'Injured'}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
 
-        {/* Team Stats */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden"
-        >
-          <div className="px-6 py-4 bg-white/5 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white flex items-center">
-              <Users className="w-5 h-5 mr-2 text-ice-400" />
-              Team Overview
-            </h3>
-          </div>
-          <div className="p-6 space-y-3">
-            <motion.div
-              whileHover={{ x: 4 }}
-              className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/10"
-            >
-              <span className="text-sm text-ice-200 font-medium">Total Players</span>
-              <span className="font-bold text-white text-lg">{stats.totalPlayers}</span>
-            </motion.div>
-            <motion.div
-              whileHover={{ x: 4 }}
-              className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg border border-green-500/30"
-            >
-              <span className="text-sm text-green-200 font-medium">Active</span>
-              <span className="font-bold text-green-400 text-lg">{stats.activePlayers}</span>
-            </motion.div>
-            <motion.div
-              whileHover={{ x: 4 }}
-              className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg border border-red-500/30"
-            >
-              <span className="text-sm text-red-200 font-medium">Injured</span>
-              <span className="font-bold text-red-400 text-lg">{stats.injuredPlayers}</span>
-            </motion.div>
-            <motion.div
-              whileHover={{ x: 4 }}
-              className="flex justify-between items-center p-3 bg-ice-500/10 rounded-lg border border-ice-500/30"
-            >
-              <span className="text-sm text-ice-200 font-medium">Videos</span>
-              <span className="font-bold text-ice-400 text-lg">{stats.totalVideos}</span>
-            </motion.div>
-          </div>
-        </motion.div>
+        {/* MIDDLE COLUMN — Recent Games + Top Performers */}
+        <div className="space-y-4">
 
-        {/* Pinned Notes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden"
-        >
-          <div className="px-6 py-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-ice-400" />
-              Pinned Notes
-            </h3>
-            <motion.button
-              onClick={handleAddNote}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              title="Add note"
-            >
-              <Plus className="w-5 h-5 text-ice-400" />
-            </motion.button>
-          </div>
-          <div className="p-6 space-y-3">
-            {notes.length > 0 ? (
-              notes.map((note, index) => (
-                <motion.div
-                  key={note.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + index * 0.1 }}
-                  whileHover={{ x: 4, scale: 1.02 }}
-                  className="p-4 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-l-4 border-yellow-400 rounded-lg cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start flex-1">
-                      <span className="text-2xl mr-3">📌</span>
-                      <div className="flex-1">
-                        <p className="font-bold text-white">{note.title}</p>
-                        <p className="text-sm text-ice-200 mt-1">{note.content}</p>
+          {/* Recent Games */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recent Results</h3>
+            </div>
+            <div className="p-5">
+              {recentGames.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-ice-500 text-sm">No completed games yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {recentGames.map((game, i) => {
+                    const won = (game.teamScore ?? 0) > (game.opponentScore ?? 0)
+                    const lost = (game.teamScore ?? 0) < (game.opponentScore ?? 0)
+                    return (
+                      <motion.div
+                        key={game.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex items-center justify-between p-3 rounded-lg bg-white/3 hover:bg-white/5 transition-all border border-white/5"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${won ? 'bg-green-500/20 text-green-400' : lost ? 'bg-goal-500/20 text-goal-400' : 'bg-white/10 text-ice-400'}`}>
+                            {won ? 'W' : lost ? 'L' : 'T'}
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-white">{game.opponent}</p>
+                            <p className="text-xs text-ice-500">{format(parseISO(game.gameDate), 'MMM d')}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-black ${won ? 'text-green-400' : lost ? 'text-goal-400' : 'text-ice-300'}`}>
+                          {game.teamScore} – {game.opponentScore}
+                        </span>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Top Performers */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-ice-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Top Performers</h3>
+            </div>
+            <div className="p-5">
+              {topStats.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-ice-500 text-sm">No stats recorded yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {topStats.map((player, i) => {
+                    const medals = ['🥇', '🥈', '🥉']
+                    return (
+                      <motion.div
+                        key={player.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex items-center gap-3"
+                      >
+                        <span className="text-xl">{medals[i]}</span>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ice-500 to-ice-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {player.jersey_number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{player.first_name} {player.last_name}</p>
+                          <p className="text-xs text-ice-400 capitalize">{player.position.replace('_', ' ')}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-black text-ice-300">{player.total_points}</p>
+                          <p className="text-xs text-ice-500">{player.total_goals}G {player.total_assists}A</p>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* RIGHT COLUMN — Coach's Notes */}
+        <div>
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="glass-strong rounded-xl border border-white/10 overflow-hidden h-full">
+            <div className="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📌</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Coach's Notes</h3>
+              </div>
+              <button onClick={() => openNoteModal()} className="w-7 h-7 flex items-center justify-center rounded-lg text-ice-400 hover:text-white hover:bg-white/10 transition-all">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 overflow-y-auto" style={{ maxHeight: '600px' }}>
+              {notes.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-4xl mb-3">📋</p>
+                  <p className="text-ice-300 font-semibold text-sm">No notes yet</p>
+                  <p className="text-ice-500 text-xs mt-1">Click + to add a coaching note</p>
+                </div>
+              ) : (
+                notes.map((note, i) => {
+                  const catColor = CATEGORY_COLORS[note.category ?? 'General'] ?? CATEGORY_COLORS.General
+                  return (
+                    <motion.div
+                      key={note.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/8 transition-all group"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm font-bold text-white leading-tight">{note.title}</p>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                          <button onClick={() => openNoteModal(note)} className="w-6 h-6 flex items-center justify-center rounded text-ice-500 hover:text-ice-300 transition-colors">
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            disabled={deletingNoteId === note.id}
+                            className="w-6 h-6 flex items-center justify-center rounded text-ice-500 hover:text-goal-400 transition-colors"
+                          >
+                            {deletingNoteId === note.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-ice-300 leading-relaxed mb-3">{note.content}</p>
+                      <div className="flex items-center justify-between">
                         {note.category && (
-                          <span className="inline-block mt-2 px-2 py-1 bg-white/10 rounded text-xs text-ice-300">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${catColor}`}>
                             {note.category}
                           </span>
                         )}
+                        <span className="text-xs text-ice-500 ml-auto">
+                          {format(parseISO(note.updated_at), 'MMM d')}
+                        </span>
                       </div>
-                    </div>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditNote(note)
-                        }}
-                        className="p-1 hover:bg-white/10 rounded"
-                      >
-                        <Edit2 className="w-4 h-4 text-ice-400" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteNote(note.id)
-                        }}
-                        className="p-1 hover:bg-white/10 rounded"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-400" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <p className="text-ice-300 text-center py-8">No notes yet. Click + to add one!</p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Practice Schedule */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden"
-        >
-          <div className="px-6 py-4 bg-white/5 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-ice-400" />
-              Next Practice
-            </h3>
-          </div>
-          <div className="p-6">
-            {nextPractice ? (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="p-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-l-4 border-green-400 rounded-lg"
-              >
-                <p className="font-bold text-white text-lg">
-                  {new Date(nextPractice.practiceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • 
-                  {new Date(nextPractice.practiceDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                </p>
-                <p className="text-sm text-green-200 mt-2">⚡ {nextPractice.focus}</p>
-              </motion.div>
-            ) : (
-              <p className="text-ice-300 text-center py-8">No upcoming practices scheduled</p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Recent Games with Win/Loss */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="glass-strong rounded-xl shadow-2xl border border-white/20 overflow-hidden lg:col-span-2"
-        >
-          <div className="px-6 py-4 bg-white/5 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white flex items-center">
-              <Trophy className="w-5 h-5 mr-2 text-ice-400" />
-              Recent Games
-            </h3>
-          </div>
-          <div className="p-6">
-            {dashboardData?.stats && dashboardData.stats.totalGames > 0 ? (
-              <div className="space-y-3">
-                {/* This would ideally fetch recent games from the API */}
-                {/* For now, showing placeholder for the UI */}
-                <div className="text-ice-300 text-center py-4">
-                  <p className="font-medium">Click on Schedule or Games to record game results</p>
-                  <p className="text-sm mt-2">Win/Loss records will appear here once games are completed</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-ice-300 text-center py-8">No games played yet</p>
-            )}
-          </div>
-        </motion.div>
+                    </motion.div>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Team Settings Edit Modal */}
+      {/* Team Settings Modal */}
       <AnimatePresence>
-        {showTeamEditModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowTeamEditModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-xl shadow-2xl max-w-md w-full border border-white/20"
-            >
-              <div className="px-6 py-5 bg-ice-500 flex items-center justify-between rounded-t-xl">
-                <h3 className="text-2xl font-black text-white">Edit Team Settings</h3>
-                <button
-                  onClick={() => setShowTeamEditModal(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-ice-200 mb-2">Team Name</label>
-                  <input
-                    type="text"
-                    value={editTeamName}
-                    onChange={(e) => setEditTeamName(e.target.value)}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
-                  />
+        {showTeamModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowTeamModal(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+              <div className="glass-strong rounded-xl w-full max-w-sm border border-white/10 shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
+                  <h3 className="text-lg font-bold text-white">Team Settings</h3>
+                  <button onClick={() => setShowTeamModal(false)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ice-400 hover:text-white hover:bg-white/10 transition-all"><X className="w-4 h-4" /></button>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-ice-200 mb-2">Season</label>
-                  <input
-                    type="text"
-                    value={editSeason}
-                    onChange={(e) => setEditSeason(e.target.value)}
-                    placeholder="e.g., 2025-2026"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
-                  />
+                <div className="px-5 py-4 space-y-4">
+                  <div><label className={labelClass}>Team Name</label><input value={editName} onChange={e => setEditName(e.target.value)} className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                  <div><label className={labelClass}>Season</label><input value={editSeason} onChange={e => setEditSeason(e.target.value)} placeholder="e.g. 2025-2026" className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                  <div><label className={labelClass}>Division</label><input value={editDivision} onChange={e => setEditDivision(e.target.value)} placeholder="e.g. NCAA D1" className={inputClass} style={{ colorScheme: 'dark' }} /></div>
                 </div>
-              </div>
-
-              <div className="px-6 py-4 bg-white/5 border-t border-white/10 flex justify-end space-x-3 rounded-b-xl">
-                <button
-                  onClick={() => setShowTeamEditModal(false)}
-                  className="px-5 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveTeam}
-                  disabled={savingTeam}
-                  className="px-5 py-2 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-bold shadow-glow-blue transition-all disabled:opacity-50 flex items-center space-x-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{savingTeam ? 'Saving...' : 'Save Changes'}</span>
-                </button>
+                <div className="flex justify-end gap-3 px-5 py-4 border-t border-white/10 bg-white/5">
+                  <button onClick={() => setShowTeamModal(false)} className="px-4 py-2 text-sm font-semibold text-ice-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Cancel</button>
+                  <motion.button whileHover={{ scale: savingTeam ? 1 : 1.03 }} whileTap={{ scale: savingTeam ? 1 : 0.97 }} onClick={handleSaveTeam} disabled={savingTeam} className="px-5 py-2 text-sm font-bold bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg shadow-glow-blue transition-all disabled:opacity-60 flex items-center gap-2">
+                    {savingTeam ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {savingTeam ? 'Saving...' : 'Save'}
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Note Edit Modal */}
+      {/* Note Modal */}
       <AnimatePresence>
         {showNoteModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowNoteModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-xl shadow-2xl max-w-lg w-full border border-white/20"
-            >
-              <div className="px-6 py-5 bg-ice-500 flex items-center justify-between rounded-t-xl">
-                <h3 className="text-2xl font-black text-white">
-                  {editingNote ? 'Edit Note' : 'Add New Note'}
-                </h3>
-                <button
-                  onClick={() => setShowNoteModal(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-ice-200 mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={noteTitle}
-                    onChange={(e) => setNoteTitle(e.target.value)}
-                    placeholder="e.g., Power Play Strategy"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
-                  />
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowNoteModal(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+              <div className="glass-strong rounded-xl w-full max-w-md border border-white/10 shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
+                  <h3 className="text-lg font-bold text-white">{editingNote ? 'Edit Note' : 'Add Note'}</h3>
+                  <button onClick={() => setShowNoteModal(false)} className="w-7 h-7 flex items-center justify-center rounded-lg text-ice-400 hover:text-white hover:bg-white/10 transition-all"><X className="w-4 h-4" /></button>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-ice-200 mb-2">Content</label>
-                  <textarea
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                    placeholder="Enter note details..."
-                    rows={4}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all resize-none"
-                  />
+                <div className="px-5 py-4 space-y-4">
+                  <div><label className={labelClass}>Title</label><input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder="e.g. Power Play Strategy" className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                  <div>
+                    <label className={labelClass}>Content</label>
+                    <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={4} placeholder="Note details..." className={`${inputClass} resize-none`} style={{ colorScheme: 'dark' }} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Category</label>
+                    <select value={noteCategory} onChange={e => setNoteCategory(e.target.value)} className={inputClass} style={{ colorScheme: 'dark' }}>
+                      {NOTE_CATEGORIES.map(c => <option key={c} value={c} style={{ backgroundColor: '#1e3a5f' }}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-ice-200 mb-2">Category</label>
-                  <select
-                    value={noteCategory}
-                    onChange={(e) => setNoteCategory(e.target.value)}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all"
-                  >
-                    <option value="Strategy">Strategy</option>
-                    <option value="Defense">Defense</option>
-                    <option value="Offense">Offense</option>
-                    <option value="Special Teams">Special Teams</option>
-                    <option value="General">General</option>
-                  </select>
+                <div className="flex justify-end gap-3 px-5 py-4 border-t border-white/10 bg-white/5">
+                  <button onClick={() => setShowNoteModal(false)} className="px-4 py-2 text-sm font-semibold text-ice-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Cancel</button>
+                  <motion.button whileHover={{ scale: savingNote ? 1 : 1.03 }} whileTap={{ scale: savingNote ? 1 : 0.97 }} onClick={handleSaveNote} disabled={savingNote || !noteTitle.trim() || !noteContent.trim()} className="px-5 py-2 text-sm font-bold bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg shadow-glow-blue transition-all disabled:opacity-60 flex items-center gap-2">
+                    {savingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {savingNote ? 'Saving...' : editingNote ? 'Update' : 'Add Note'}
+                  </motion.button>
                 </div>
-              </div>
-
-              <div className="px-6 py-4 bg-white/5 border-t border-white/10 flex justify-end space-x-3 rounded-b-xl">
-                <button
-                  onClick={() => setShowNoteModal(false)}
-                  className="px-5 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveNote}
-                  disabled={savingNote}
-                  className="px-5 py-2 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-bold shadow-glow-blue transition-all disabled:opacity-50 flex items-center space-x-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{savingNote ? 'Saving...' : editingNote ? 'Update Note' : 'Add Note'}</span>
-                </button>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
+
     </div>
   )
 }

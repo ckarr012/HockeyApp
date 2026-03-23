@@ -122,6 +122,7 @@ export interface DashboardData {
     totalPlayers: number;
     activePlayers: number;
     injuredPlayers: number;
+    inactivePlayers: number;
     totalGames: number;
     wins: number;
     losses: number;
@@ -135,8 +136,11 @@ export interface DashboardData {
     id: string;
     teamId: string;
     practiceDate: string;
+    practice_date?: string;
     focus: string;
   } | null;
+  recentGames: Game[];
+  injuredPlayersList: Player[];
 }
 
 export async function fetchPlayers(teamId: string): Promise<Player[]> {
@@ -688,6 +692,34 @@ export async function updateScoutingReport(reportId: string, reportData: any): P
     throw new Error(`Failed to update scouting report: ${response.statusText}`);
   }
   
+  const data = await response.json();
+  return data.report;
+}
+
+export interface AiScoutingReport {
+  strengths: string;
+  weaknesses: string;
+  powerPlayTendency: string;
+  goalieWeakness: string;
+  tacticalNotes: string;
+  keyPlayers: KeyPlayer[];
+  lineMatchupSuggestions: string;
+}
+
+export async function generateAiScoutingReport(
+  opponentName: string,
+  rawNotes: string,
+  teamRoster: Player[]
+): Promise<AiScoutingReport> {
+  const response = await fetch(`${API_BASE_URL}/teams/scouting/ai-generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opponentName, rawNotes, teamRoster }),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to generate scouting report');
+  }
   const data = await response.json();
   return data.report;
 }

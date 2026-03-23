@@ -55,59 +55,59 @@ const addPlayer = async (req, res) => {
 const getDashboard = async (req, res) => {
   try {
     const { teamId } = req.params;
-    
     const team = await getTeamById(teamId);
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
+    if (!team) return res.status(404).json({ error: 'Team not found' });
 
-    const players = await getPlayersByTeamId(teamId);
-    const games = await getGamesByTeamId(teamId);
-    const videos = await getVideosByTeamId(teamId);
-    const practices = await getPracticesByTeamId(teamId);
+    const [players, games, videos, practices] = await Promise.all([
+      getPlayersByTeamId(teamId),
+      getGamesByTeamId(teamId),
+      getVideosByTeamId(teamId),
+      getPracticesByTeamId(teamId),
+    ]);
 
-  const activePlayers = players.filter(p => p.status === 'active').length;
-  const injuredPlayers = players.filter(p => p.status === 'injured').length;
-  
-  const completedGames = games.filter(g => g.status === 'completed');
-  const wins = completedGames.filter(g => g.team_score > g.opponent_score).length;
-  const losses = completedGames.filter(g => g.team_score < g.opponent_score).length;
-  const ties = completedGames.filter(g => g.team_score === g.opponent_score).length;
-  
-  const upcomingGames = games.filter(g => g.status === 'scheduled');
-  const nextGame = upcomingGames.sort((a, b) => 
-    new Date(a.game_date) - new Date(b.game_date)
-  )[0] || null;
+    const activePlayers = players.filter(p => p.status === 'active');
+    const injuredPlayers = players.filter(p => p.status === 'injured');
+    const inactivePlayers = players.filter(p => p.status === 'inactive');
 
-  const upcomingPractices = practices.sort((a, b) => 
-    new Date(a.practice_date) - new Date(b.practice_date)
-  );
-  const nextPractice = upcomingPractices[0] || null;
+    const completedGames = games.filter(g => g.status === 'completed');
+    const wins = completedGames.filter(g => g.teamScore > g.opponentScore).length;
+    const losses = completedGames.filter(g => g.teamScore < g.opponentScore).length;
+    const ties = completedGames.filter(g => g.teamScore === g.opponentScore).length;
 
-    const dashboard = {
-      team: {
-        id: team.id,
-        name: team.name,
-        division: team.division,
-        season: team.season
-      },
+    const now = new Date();
+
+    const upcomingGames = games
+      .filter(g => g.status === 'scheduled')
+      .sort((a, b) => new Date(a.gameDate) - new Date(b.gameDate));
+    const nextGame = upcomingGames[0] || null;
+
+    const recentGames = completedGames
+      .sort((a, b) => new Date(b.gameDate) - new Date(a.gameDate))
+      .slice(0, 5);
+
+    const futurePractices = practices
+      .filter(p => new Date(p.practice_date) >= now)
+      .sort((a, b) => new Date(a.practice_date) - new Date(b.practice_date));
+    const nextPractice = futurePractices[0] || null;
+
+    res.json({
+      team: { id: team.id, name: team.name, division: team.division, season: team.season },
       stats: {
         totalPlayers: players.length,
-        activePlayers,
-        injuredPlayers,
+        activePlayers: activePlayers.length,
+        injuredPlayers: injuredPlayers.length,
+        inactivePlayers: inactivePlayers.length,
         totalGames: games.length,
-        wins,
-        losses,
-        ties,
+        wins, losses, ties,
         upcomingGames: upcomingGames.length,
         totalVideos: videos.length,
-        totalPractices: practices.length
+        totalPractices: practices.length,
       },
       nextGame,
-      nextPractice
-    };
-
-    res.json(dashboard);
+      nextPractice,
+      recentGames,
+      injuredPlayersList: injuredPlayers,
+    });
   } catch (error) {
     console.error('Error in getDashboard:', error);
     res.status(500).json({ error: 'Internal server error' });

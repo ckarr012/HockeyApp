@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const Anthropic = require('@anthropic-ai/sdk');
 const {
   getScoutingReportsByTeam,
   getScoutingReportByGame,
@@ -129,10 +130,76 @@ const deleteReport = async (req, res) => {
   }
 };
 
+const generateAiScoutingReport = async (req, res) => {
+  try {
+    const { opponentName, rawNotes, teamRoster } = req.body;
+
+    if (!opponentName) {
+      return res.status(400).json({ error: 'Opponent name is required' });
+    }
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const rosterText = teamRoster?.length > 0
+      ? `\nOUR ROSTER:\n${teamRoster.map(p => `#${p.jerseyNumber} ${p.firstName} ${p.lastName} (${p.position})`).join('\n')}`
+      : '';
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `You are an expert ice hockey scouting analyst. Based on the scouting notes below, generate a comprehensive scouting report for the opponent.
+
+OPPONENT: ${opponentName}
+
+SCOUTING NOTES FROM COACH:
+${rawNotes || 'No specific notes provided — generate a general opponent preparation template.'}
+${rosterText}
+
+Return ONLY a valid JSON object with NO markdown, NO code fences, just raw JSON:
+
+{
+  "strengths": "2-4 sentences about what this team does well",
+  "weaknesses": "2-4 sentences about exploitable weaknesses",
+  "powerPlayTendency": "2-3 sentences about their power play formation and tendencies",
+  "goalieWeakness": "2-3 sentences about goalie tendencies and weak spots",
+  "tacticalNotes": "3-5 sentences about overall game plan and tactical approach to beat this team",
+  "keyPlayers": [
+    {
+      "name": "Player name (or 'Unknown' if not mentioned)",
+      "number": 0,
+      "position": "position",
+      "notes": "why this player is dangerous and how to defend them"
+    }
+  ],
+  "lineMatchupSuggestions": "2-3 sentences about suggested line matchups if roster was provided, otherwise general advice"
+}
+
+Extract key player info from the notes if mentioned. Include up to 3 key players. If no players are mentioned, suggest generic archetypes to watch for based on the team's described style.`,
+      }],
+    });
+
+    const raw = message.content[0].text.trim();
+    let report;
+    try {
+      report = JSON.parse(raw);
+    } catch {
+      return res.status(422).json({ error: 'Could not generate report. Please try again.' });
+    }
+
+    res.json({ report });
+  } catch (error) {
+    console.error('Error in generateAiScoutingReport:', error);
+    res.status(500).json({ error: 'Failed to generate scouting report.' });
+  }
+};
+
 module.exports = {
   getReports,
   getReportByGame,
   createReport,
   updateReport,
-  deleteReport
+  deleteReport,
+  generateAiScoutingReport
 };
