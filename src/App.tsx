@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Video, Users, Calendar, Clipboard, BarChart3, Activity, Search, UserPlus, Bell, Menu, LogOut, X, Layout, Layers } from 'lucide-react'
+import { Home, Video, Users, Calendar, Clipboard, BarChart3, Activity, Search, UserPlus, Bell, Menu, LogOut, X, Layout, Layers, RefreshCw } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import VideoLibrary from './components/VideoLibrary'
 import Roster from './components/Roster'
@@ -12,6 +12,7 @@ import TrainingRoom from './components/TrainingRoom'
 import CalendarView from './components/CalendarView'
 import ScoutingHub from './components/ScoutingHub'
 import RecruitingHub from './components/RecruitingHub'
+import AchaSyncModal from './components/AchaSyncModal'
 import Login from './components/Login'
 import { User } from './api/api'
 
@@ -19,6 +20,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [showAchaSync, setShowAchaSync] = useState(false)
 
   const handleLogin = (userData: User) => {
     setUser(userData)
@@ -100,6 +102,15 @@ function App() {
               <span className="text-sm font-medium text-ice-200">{user.teamName}</span>
               <span className="text-xs text-ice-400 ml-2">• {user.season}</span>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAchaSync(true)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-all flex items-center gap-1.5 text-xs font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-3 hidden sm:flex"
+              title="Sync from ACHA"
+            >
+              <RefreshCw className="w-4 h-4" /> ACHA Sync
+            </motion.button>
             <button className="p-2 rounded-lg hover:bg-white/10 transition-all relative hidden sm:block">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-goal-500 rounded-full animate-pulse"></span>
@@ -213,6 +224,18 @@ function App() {
           </motion.div>
         </main>
       </div>
+
+      {/* ACHA Sync Modal */}
+      <AchaSyncModal
+        teamId={user.teamId}
+        isOpen={showAchaSync}
+        onClose={() => setShowAchaSync(false)}
+        onSyncComplete={(destination) => {
+          setShowAchaSync(false)
+          if (destination === 'scouting') setCurrentView('scouting')
+          else if (destination === 'team') setCurrentView('team')
+        }}
+      />
     </div>
   )
 }

@@ -945,3 +945,175 @@ export async function generatePlayerAiReport(
   const data = await response.json();
   return data.report;
 }
+
+// ==================== ACHA Sync ====================
+
+export interface AchaPlayer {
+  jerseyNumber: number;
+  firstName: string;
+  lastName: string;
+  position: string;
+  height: string | null;
+  weight: number | null;
+  hometown: string | null;
+}
+
+export interface AchaGame {
+  gameDate: string;
+  opponent: string;
+  homeAway: string;
+  location: string;
+  teamScore: number | null;
+  opponentScore: number | null;
+  status: string;
+}
+
+export interface AchaStat {
+  name: string;
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  points: number;
+  pims: number;
+  shots: number;
+}
+
+export async function fetchAchaRoster(teamId?: string): Promise<AchaPlayer[]> {
+  const url = `${API_BASE_URL}/acha/roster${teamId ? `?teamId=${teamId}` : ''}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to fetch ACHA roster');
+  }
+  const data = await response.json();
+  return data.players;
+}
+
+export async function fetchAchaSchedule(teamId?: string): Promise<AchaGame[]> {
+  const url = `${API_BASE_URL}/acha/schedule${teamId ? `?teamId=${teamId}` : ''}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to fetch ACHA schedule');
+  }
+  const data = await response.json();
+  return data.games;
+}
+
+export async function fetchAchaStats(teamId?: string): Promise<AchaStat[]> {
+  const url = `${API_BASE_URL}/acha/stats${teamId ? `?teamId=${teamId}` : ''}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to fetch ACHA stats');
+  }
+  const data = await response.json();
+  return data.stats;
+}
+
+export async function syncAchaFromUrl(url: string, type: 'roster' | 'schedule' | 'stats'): Promise<{ players?: AchaPlayer[]; games?: AchaGame[]; stats?: AchaStat[]; teamId: string }> {
+  const response = await fetch(`${API_BASE_URL}/acha/sync-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, type }),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to sync from URL');
+  }
+  return response.json();
+}
+
+// ── OPPONENT SCOUTING ──
+export interface OpponentPlayer {
+  id: string;
+  jerseyNumber: number;
+  firstName: string;
+  lastName: string;
+  position: string;
+  height: string | null;
+  weight: number | null;
+  hometown: string | null;
+}
+
+export interface OpponentStat {
+  id: string;
+  playerName: string;
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  points: number;
+  pims: number;
+  shots: number;
+}
+
+export interface AiScoutingReport {
+  strengths: string;
+  weaknesses: string;
+  powerPlayTendency: string;
+  goalieWeakness: string;
+  tacticalNotes: string;
+  keyPlayers: Array<{
+    name: string;
+    number: number;
+    position: string;
+    notes: string;
+  }>;
+  lineMatchupSuggestions: string;
+}
+
+export async function syncOpponentRoster(
+  url: string, opponentName: string, teamId: string
+): Promise<OpponentPlayer[]> {
+  const response = await fetch(`${API_BASE_URL}/acha/opponent/roster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, opponentName, teamId }),
+  });
+  if (!response.ok) { const err = await response.json(); throw new Error(err.error ?? 'Failed'); }
+  const data = await response.json();
+  return data.players;
+}
+
+export async function syncOpponentStats(
+  url: string, opponentName: string, teamId: string
+): Promise<OpponentStat[]> {
+  const response = await fetch(`${API_BASE_URL}/acha/opponent/stats`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, opponentName, teamId }),
+  });
+  if (!response.ok) { const err = await response.json(); throw new Error(err.error ?? 'Failed'); }
+  const data = await response.json();
+  return data.stats;
+}
+
+export async function fetchOpponentRoster(teamId: string, opponentName: string): Promise<OpponentPlayer[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/opponent-roster?opponentName=${encodeURIComponent(opponentName)}`);
+  if (!response.ok) throw new Error('Failed to fetch opponent roster');
+  const data = await response.json();
+  return data.roster;
+}
+
+export async function fetchOpponentStats(teamId: string, opponentName: string): Promise<OpponentStat[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/opponent-stats?opponentName=${encodeURIComponent(opponentName)}`);
+  if (!response.ok) throw new Error('Failed to fetch opponent stats');
+  const data = await response.json();
+  return data.stats;
+}
+
+export async function generateScoutingFromAcha(
+  opponentName: string,
+  teamId: string,
+  roster: OpponentPlayer[],
+  stats: OpponentStat[]
+): Promise<AiScoutingReport> {
+  const response = await fetch(`${API_BASE_URL}/acha/opponent/generate-scouting`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ opponentName, teamId, roster, stats }),
+  });
+  if (!response.ok) { const err = await response.json(); throw new Error(err.error ?? 'Failed'); }
+  const data = await response.json();
+  return data.report;
+}

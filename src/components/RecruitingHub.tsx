@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   UserPlus, Star, Phone, GraduationCap, TrendingUp, Eye, X, Save,
@@ -76,9 +76,7 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
   const [videoUrl, setVideoUrl] = useState('')
   const [addingVideo, setAddingVideo] = useState(false)
 
-  useEffect(() => { loadProspects() }, [teamId])
-
-  const loadProspects = async () => {
+  const loadProspects = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -89,7 +87,9 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [teamId])
+
+  useEffect(() => { loadProspects() }, [loadProspects])
 
   const handleViewDetails = async (prospect: Prospect) => {
     try {

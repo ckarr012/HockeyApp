@@ -187,6 +187,38 @@ const migrations = [
     note TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games(id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS opponent_rosters (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    opponent_name TEXT NOT NULL,
+    acha_team_id TEXT,
+    jersey_number INTEGER,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    position TEXT,
+    height TEXT,
+    weight INTEGER,
+    hometown TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS opponent_player_stats (
+    id TEXT PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    opponent_name TEXT NOT NULL,
+    acha_team_id TEXT,
+    player_name TEXT NOT NULL,
+    games_played INTEGER DEFAULT 0,
+    goals INTEGER DEFAULT 0,
+    assists INTEGER DEFAULT 0,
+    points INTEGER DEFAULT 0,
+    pims INTEGER DEFAULT 0,
+    shots INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id)
   )`
 ];
 
