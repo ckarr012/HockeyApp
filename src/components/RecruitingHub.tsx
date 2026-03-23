@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { UserPlus, Star, Phone, GraduationCap, TrendingUp, Eye, X, Save, Trash2, Video } from 'lucide-react'
-import { fetchProspects, fetchProspectDetails, createProspect, updateProspect, deleteProspect, addProspectVideo, Prospect, ProspectVideo } from '../api/api'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  UserPlus, Star, Phone, GraduationCap, TrendingUp, Eye, X, Save,
+  Trash2, Video, Loader2, Plus, ExternalLink, AlertTriangle
+} from 'lucide-react'
+import {
+  fetchProspects, fetchProspectDetails, createProspect, updateProspect,
+  deleteProspect, addProspectVideo, Prospect, ProspectVideo
+} from '../api/api'
+import LoadingSpinner from './LoadingSpinner'
 
 interface RecruitingHubProps {
   teamId: string
@@ -9,16 +16,43 @@ interface RecruitingHubProps {
 
 type ProspectStatus = 'Watching' | 'Contacted' | 'Offered' | 'Committed'
 
+const STATUS_CONFIG: Record<ProspectStatus, { color: string; bg: string; icon: string }> = {
+  Watching:  { color: 'text-ice-300',    bg: 'bg-ice-500/20 border-ice-500/30',       icon: '👀' },
+  Contacted: { color: 'text-yellow-300', bg: 'bg-yellow-500/20 border-yellow-500/30', icon: '📞' },
+  Offered:   { color: 'text-purple-300', bg: 'bg-purple-500/20 border-purple-500/30', icon: '💼' },
+  Committed: { color: 'text-green-300',  bg: 'bg-green-500/20 border-green-500/30',   icon: '✅' },
+}
+
+const STATUSES: ProspectStatus[] = ['Watching', 'Contacted', 'Offered', 'Committed']
+
+const inputClass = "w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-ice-400 focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all outline-none text-sm"
+const labelClass = "block text-xs font-bold text-ice-400 uppercase tracking-wider mb-2"
+
+function StarRating({ rating, onChange }: { rating: number; onChange?: (r: number) => void }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange?.(star)}
+          className={onChange ? 'cursor-pointer' : 'cursor-default'}
+        >
+          <Star className={`w-4 h-4 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function RecruitingHub({ teamId }: RecruitingHubProps) {
   const [prospects, setProspects] = useState<Prospect[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [prospectVideos, setProspectVideos] = useState<ProspectVideo[]>([])
 
-  // Form state
+  // Add modal
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const [position, setPosition] = useState('')
   const [gradYear, setGradYear] = useState(2026)
@@ -27,16 +61,22 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
   const [contactInfo, setContactInfo] = useState('')
   const [status, setStatus] = useState<ProspectStatus>('Watching')
   const [coachingNotes, setCoachingNotes] = useState('')
-  const [saving, setSaving] = useState(false)
 
-  // Video form state
+  // Detail panel
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
+  const [prospectVideos, setProspectVideos] = useState<ProspectVideo[]>([])
+  const [showDetail, setShowDetail] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Video form
   const [showVideoForm, setShowVideoForm] = useState(false)
   const [videoTitle, setVideoTitle] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
+  const [addingVideo, setAddingVideo] = useState(false)
 
-  useEffect(() => {
-    loadProspects()
-  }, [teamId])
+  useEffect(() => { loadProspects() }, [teamId])
 
   const loadProspects = async () => {
     try {
@@ -46,7 +86,6 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
       setProspects(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load prospects')
-      console.error('Error loading prospects:', err)
     } finally {
       setLoading(false)
     }
@@ -54,51 +93,34 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
 
   const handleViewDetails = async (prospect: Prospect) => {
     try {
+      setDetailLoading(true)
+      setShowDetail(true)
+      setShowDeleteConfirm(false)
       const details = await fetchProspectDetails(prospect.id, teamId)
       setSelectedProspect(details.prospect)
       setProspectVideos(details.videos)
-      setShowDetailModal(true)
     } catch (err) {
-      alert('Failed to load prospect details')
-      console.error('Error loading prospect details:', err)
+      console.error(err)
+    } finally {
+      setDetailLoading(false)
     }
   }
 
   const resetForm = () => {
-    setName('')
-    setPosition('')
-    setGradYear(2026)
-    setCurrentTeam('')
-    setScoutRating(3)
-    setContactInfo('')
-    setStatus('Watching')
-    setCoachingNotes('')
+    setName(''); setPosition(''); setGradYear(2026); setCurrentTeam('')
+    setScoutRating(3); setContactInfo(''); setStatus('Watching'); setCoachingNotes('')
   }
 
   const handleAddProspect = async () => {
-    if (!name || !position) {
-      alert('Name and position are required')
-      return
-    }
-
+    if (!name.trim() || !position) return
     try {
       setSaving(true)
-      await createProspect(teamId, {
-        name,
-        position,
-        gradYear,
-        currentTeam,
-        scoutRating,
-        contactInfo,
-        status,
-        coachingNotes
-      })
+      await createProspect(teamId, { name, position, gradYear, currentTeam, scoutRating, contactInfo, status, coachingNotes })
       await loadProspects()
-      setShowAddForm(false)
+      setShowAddModal(false)
       resetForm()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to add prospect')
-      console.error('Error adding prospect:', err)
+      console.error(err)
     } finally {
       setSaving(false)
     }
@@ -106,545 +128,423 @@ export default function RecruitingHub({ teamId }: RecruitingHubProps) {
 
   const handleUpdateStatus = async (prospect: Prospect, newStatus: ProspectStatus) => {
     try {
-      await updateProspect(prospect.id, {
-        ...prospect,
-        teamId,
-        status: newStatus
-      })
+      await updateProspect(prospect.id, { ...prospect, teamId, status: newStatus })
       await loadProspects()
+      if (selectedProspect?.id === prospect.id) {
+        setSelectedProspect(prev => prev ? { ...prev, status: newStatus } : prev)
+      }
     } catch (err) {
-      alert('Failed to update prospect status')
-      console.error('Error updating status:', err)
+      console.error(err)
     }
   }
 
-  const handleDeleteProspect = async (prospectId: string) => {
-    if (!confirm('Are you sure you want to delete this prospect?')) return
-
+  const handleDeleteProspect = async () => {
+    if (!selectedProspect) return
     try {
-      await deleteProspect(prospectId, teamId)
+      setDeleting(true)
+      await deleteProspect(selectedProspect.id, teamId)
       await loadProspects()
-      setShowDetailModal(false)
+      setShowDetail(false)
+      setShowDeleteConfirm(false)
     } catch (err) {
-      alert('Failed to delete prospect')
-      console.error('Error deleting prospect:', err)
+      console.error(err)
+    } finally {
+      setDeleting(false)
     }
   }
 
   const handleAddVideo = async () => {
-    if (!selectedProspect || !videoTitle || !videoUrl) {
-      alert('Title and URL are required')
-      return
-    }
-
+    if (!selectedProspect || !videoTitle.trim() || !videoUrl.trim()) return
     try {
+      setAddingVideo(true)
       await addProspectVideo(selectedProspect.id, teamId, { title: videoTitle, videoUrl })
       const details = await fetchProspectDetails(selectedProspect.id, teamId)
       setProspectVideos(details.videos)
-      setVideoTitle('')
-      setVideoUrl('')
-      setShowVideoForm(false)
+      setVideoTitle(''); setVideoUrl(''); setShowVideoForm(false)
     } catch (err) {
-      alert('Failed to add video')
-      console.error('Error adding video:', err)
+      console.error(err)
+    } finally {
+      setAddingVideo(false)
     }
   }
 
-  const getProspectsByStatus = (status: ProspectStatus) => {
-    return prospects.filter(p => p.status === status)
-  }
+  const getProspectsByStatus = (s: ProspectStatus) => prospects.filter(p => p.status === s)
 
-  const renderStars = (rating?: number) => {
-    if (!rating) return null
-    return (
-      <div className="flex">
-        {[1, 2, 3, 4, 5].map(star => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-          />
-        ))}
+  if (loading) return <LoadingSpinner message="Loading recruiting pipeline..." />
+
+  if (error) return (
+    <div className="p-8">
+      <div className="glass-strong border border-goal-500/30 rounded-xl p-6 bg-goal-500/10">
+        <p className="text-goal-300 font-semibold">{error}</p>
       </div>
-    )
-  }
-
-  const statusColors: Record<ProspectStatus, string> = {
-    Watching: 'bg-blue-500/20 border-blue-400/50',
-    Contacted: 'bg-yellow-500/20 border-yellow-400/50',
-    Offered: 'bg-purple-500/20 border-purple-400/50',
-    Committed: 'bg-green-500/20 border-green-400/50'
-  }
-
-  const renderKanbanColumn = (status: ProspectStatus) => {
-    const columnProspects = getProspectsByStatus(status)
-    
-    return (
-      <div className="flex-1 min-w-[280px]">
-        <div className="glass-strong rounded-xl border border-white/20 p-4 shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-white text-lg">{status}</h3>
-            <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold text-ice-200">
-              {columnProspects.length}
-            </span>
-          </div>
-          
-          <div className="space-y-3">
-            {columnProspects.map(prospect => (
-              <motion.div
-                key={prospect.id}
-                whileHover={{ scale: 1.02, y: -2 }}
-                className={`p-4 rounded-lg border-2 ${statusColors[status]} hover:shadow-glow-blue transition-all cursor-pointer backdrop-blur-sm`}
-                onClick={() => handleViewDetails(prospect)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h4 className="font-bold text-white">{prospect.name}</h4>
-                    <p className="text-sm text-ice-200 font-medium">{prospect.position}</p>
-                  </div>
-                  {renderStars(prospect.scoutRating)}
-                </div>
-                
-                {prospect.currentTeam && (
-                  <p className="text-xs text-ice-300 mb-2 font-medium">{prospect.currentTeam}</p>
-                )}
-                
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center text-ice-300 font-medium">
-                    <GraduationCap className="w-3 h-3 mr-1" />
-                    Class of {prospect.gradYear}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleViewDetails(prospect)
-                    }}
-                    className="text-ice-400 hover:text-ice-300 flex items-center font-bold"
-                  >
-                    <Eye className="w-3 h-3 mr-1" />
-                    View
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-            
-            {columnProspects.length === 0 && (
-              <div className="text-center py-8 text-ice-400 text-sm font-medium">
-                No prospects in this stage
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-ice-500 border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <p className="text-ice-200 text-lg">Loading recruiting pipeline...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
-        </div>
-      </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div className="p-4 md:p-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Recruiting Hub</h2>
-          <p className="text-ice-200 mt-1 text-lg">Track and manage your prospect pipeline</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">🎓 Recruiting Hub</h2>
+          <p className="text-ice-200 mt-1">Track and manage your prospect pipeline</p>
         </div>
         <motion.button
-          onClick={() => setShowAddForm(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all flex items-center space-x-2"
+          onClick={() => { resetForm(); setShowAddModal(true) }}
+          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all flex items-center gap-2"
         >
-          <UserPlus className="w-5 h-5" />
-          <span>Add Prospect</span>
+          <UserPlus className="w-4 h-4" /> Add Prospect
         </motion.button>
       </div>
 
-      {/* Kanban Board */}
+      {/* Pipeline summary */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        {STATUSES.map(s => {
+          const cfg = STATUS_CONFIG[s]
+          const count = getProspectsByStatus(s).length
+          return (
+            <div key={s} className={`glass-strong rounded-xl p-4 border ${cfg.bg}`}>
+              <p className="text-lg font-black text-white">{count}</p>
+              <p className={`text-xs font-bold uppercase tracking-wider mt-0.5 ${cfg.color}`}>{cfg.icon} {s}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Kanban board */}
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {renderKanbanColumn('Watching')}
-        {renderKanbanColumn('Contacted')}
-        {renderKanbanColumn('Offered')}
-        {renderKanbanColumn('Committed')}
+        {STATUSES.map(s => {
+          const cfg = STATUS_CONFIG[s]
+          const columnProspects = getProspectsByStatus(s)
+          return (
+            <div key={s} className="flex-1 min-w-[260px]">
+              <div className="glass-strong rounded-xl border border-white/10 overflow-hidden">
+                <div className={`px-4 py-3 border-b border-white/10 flex items-center justify-between`}>
+                  <h3 className={`text-sm font-bold uppercase tracking-wider ${cfg.color}`}>{cfg.icon} {s}</h3>
+                  <span className="px-2 py-0.5 bg-white/10 rounded-full text-xs font-bold text-ice-300">{columnProspects.length}</span>
+                </div>
+                <div className="p-3 space-y-3 min-h-[200px]">
+                  {columnProspects.map((prospect, i) => (
+                    <motion.div
+                      key={prospect.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      onClick={() => handleViewDetails(prospect)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-glow-blue ${cfg.bg}`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-bold text-white text-sm">{prospect.name}</p>
+                          <p className="text-xs text-ice-300">{prospect.position}</p>
+                        </div>
+                        {prospect.scoutRating && <StarRating rating={prospect.scoutRating} />}
+                      </div>
+                      {prospect.currentTeam && (
+                        <p className="text-xs text-ice-400 mb-2 truncate">{prospect.currentTeam}</p>
+                      )}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1 text-ice-400">
+                          <GraduationCap className="w-3 h-3" /> Class of {prospect.gradYear}
+                        </span>
+                        <span className="text-ice-500 font-semibold flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> View
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {columnProspects.length === 0 && (
+                    <div className="text-center py-8 text-ice-500 text-xs font-medium">
+                      No prospects here yet
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Add Prospect Modal */}
-      {showAddForm && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowAddForm(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="glass-strong rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">Add New Prospect</h3>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Player name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Position *
-                  </label>
-                  <select
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium"
-                    style={{ colorScheme: 'light' }}
-                  >
-                    <option value="" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>Select position</option>
-                    <option value="Center" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⚡ Center</option>
-                    <option value="Left Wing" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>◀️ Left Wing</option>
-                    <option value="Right Wing" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>▶️ Right Wing</option>
-                    <option value="Defense" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>🛡️ Defense</option>
-                    <option value="Goalie" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>🥅 Goalie</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Graduation Year
-                  </label>
-                  <input
-                    type="number"
-                    value={gradYear}
-                    onChange={(e) => setGradYear(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Scout Rating
-                  </label>
-                  <select
-                    value={scoutRating}
-                    onChange={(e) => setScoutRating(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium"
-                    style={{ colorScheme: 'light' }}
-                  >
-                    <option value={1} style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⭐ (1 star)</option>
-                    <option value={2} style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⭐⭐ (2 stars)</option>
-                    <option value={3} style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⭐⭐⭐ (3 stars)</option>
-                    <option value={4} style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⭐⭐⭐⭐ (4 stars)</option>
-                    <option value={5} style={{ backgroundColor: '#f9fafb', color: '#111827' }}>⭐⭐⭐⭐⭐ (5 stars)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Team
-                </label>
-                <input
-                  type="text"
-                  value={currentTeam}
-                  onChange={(e) => setCurrentTeam(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="High school or junior team"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Information
-                </label>
-                <input
-                  type="text"
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Email, phone, etc."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as ProspectStatus)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium"
-                  style={{ colorScheme: 'light' }}
-                >
-                  <option value="Watching" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>👀 Watching</option>
-                  <option value="Contacted" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>📞 Contacted</option>
-                  <option value="Offered" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>💼 Offered</option>
-                  <option value="Committed" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>✅ Committed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Coaching Notes
-                </label>
-                <textarea
-                  value={coachingNotes}
-                  onChange={(e) => setCoachingNotes(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Scouting observations and evaluation notes..."
-                />
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddProspect}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                <span>{saving ? 'Saving...' : 'Add Prospect'}</span>
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-
-      {/* Prospect Detail Modal */}
-      {showDetailModal && selectedProspect && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowDetailModal(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="glass-strong rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700">
-              <div className="flex items-start justify-between">
-                <div className="text-white">
-                  <h3 className="text-2xl font-bold">{selectedProspect.name}</h3>
-                  <p className="text-blue-100 mt-1">
-                    {selectedProspect.position} • Class of {selectedProspect.gradYear}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="text-white hover:text-blue-100"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Status and Rating */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Recruitment Status
-                  </label>
-                  <select
-                    value={selectedProspect.status}
-                    onChange={(e) => handleUpdateStatus(selectedProspect, e.target.value as ProspectStatus)}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-medium"
-                    style={{ colorScheme: 'light' }}
-                  >
-                    <option value="Watching" style={{ backgroundColor: '#ffffff', color: '#111827' }}>👀 Watching</option>
-                    <option value="Contacted" style={{ backgroundColor: '#ffffff', color: '#111827' }}>📞 Contacted</option>
-                    <option value="Offered" style={{ backgroundColor: '#ffffff', color: '#111827' }}>💼 Offered</option>
-                    <option value="Committed" style={{ backgroundColor: '#ffffff', color: '#111827' }}>✅ Committed</option>
-                  </select>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Scout Rating
-                  </label>
-                  <div className="flex items-center">
-                    {renderStars(selectedProspect.scoutRating)}
-                    <span className="ml-2 text-sm text-gray-600">
-                      ({selectedProspect.scoutRating}/5)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {selectedProspect.currentTeam && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Current Team
-                    </label>
-                    <p className="text-gray-900">{selectedProspect.currentTeam}</p>
-                  </div>
-                )}
-                
-                {selectedProspect.contactInfo && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                      <Phone className="w-4 h-4 mr-1" />
-                      Contact Information
-                    </label>
-                    <p className="text-gray-900">{selectedProspect.contactInfo}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Coaching Notes */}
-              {selectedProspect.coachingNotes && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    Coaching Notes & Evaluation
-                  </label>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-gray-900 whitespace-pre-wrap">{selectedProspect.coachingNotes}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Video Gallery */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700 flex items-center">
-                    <Video className="w-4 h-4 mr-1" />
-                    Highlight Videos ({prospectVideos.length})
-                  </label>
-                  <button
-                    onClick={() => setShowVideoForm(!showVideoForm)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    + Add Video
+      <AnimatePresence>
+        {showAddModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="glass-strong rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col border border-white/10 shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5 shrink-0">
+                  <h3 className="text-lg font-bold text-white">Add New Prospect</h3>
+                  <button onClick={() => setShowAddModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-ice-400 hover:text-white hover:bg-white/10 transition-all">
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-
-                {showVideoForm && (
-                  <div className="mb-4 bg-gray-50 rounded-lg p-4 space-y-3">
-                    <input
-                      type="text"
-                      value={videoTitle}
-                      onChange={(e) => setVideoTitle(e.target.value)}
-                      placeholder="Video title"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      type="url"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="YouTube/Vimeo URL"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <button
-                      onClick={handleAddVideo}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                    >
-                      Add Video
-                    </button>
+                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className={labelClass}>Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Player name" className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                    <div>
+                      <label className={labelClass}>Position *</label>
+                      <select value={position} onChange={e => setPosition(e.target.value)} className={inputClass} style={{ colorScheme: 'dark' }}>
+                        <option value="" style={{ backgroundColor: '#1e3a5f' }}>Select position</option>
+                        {['Center', 'Left Wing', 'Right Wing', 'Defense', 'Goalie'].map(p => (
+                          <option key={p} value={p} style={{ backgroundColor: '#1e3a5f' }}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
-
-                {prospectVideos.length > 0 ? (
-                  <div className="space-y-2">
-                    {prospectVideos.map(video => (
-                      <a
-                        key={video.id}
-                        href={video.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center">
-                          <Video className="w-5 h-5 text-red-600 mr-3" />
-                          <span className="text-gray-900">{video.title}</span>
-                        </div>
-                        <span className="text-blue-600 text-sm">Watch →</span>
-                      </a>
-                    ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className={labelClass}>Grad Year</label><input type="number" value={gradYear} onChange={e => setGradYear(parseInt(e.target.value))} className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                    <div>
+                      <label className={labelClass}>Scout Rating</label>
+                      <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg flex items-center">
+                        <StarRating rating={scoutRating} onChange={setScoutRating} />
+                        <span className="ml-2 text-xs text-ice-400">({scoutRating}/5)</span>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
-                    No videos added yet
+                  <div><label className={labelClass}>Current Team</label><input value={currentTeam} onChange={e => setCurrentTeam(e.target.value)} placeholder="High school or junior team" className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                  <div><label className={labelClass}>Contact Info</label><input value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="Email, phone, etc." className={inputClass} style={{ colorScheme: 'dark' }} /></div>
+                  <div>
+                    <label className={labelClass}>Status</label>
+                    <select value={status} onChange={e => setStatus(e.target.value as ProspectStatus)} className={inputClass} style={{ colorScheme: 'dark' }}>
+                      {STATUSES.map(s => <option key={s} value={s} style={{ backgroundColor: '#1e3a5f' }}>{STATUS_CONFIG[s].icon} {s}</option>)}
+                    </select>
                   </div>
-                )}
+                  <div>
+                    <label className={labelClass}>Coaching Notes</label>
+                    <textarea value={coachingNotes} onChange={e => setCoachingNotes(e.target.value)} rows={3} placeholder="Scouting observations and evaluation notes..." className={`${inputClass} resize-none`} style={{ colorScheme: 'dark' }} />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/10 bg-white/5 shrink-0">
+                  <button onClick={() => setShowAddModal(false)} className="px-4 py-2.5 text-sm font-semibold text-ice-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Cancel</button>
+                  <motion.button
+                    whileHover={{ scale: !name.trim() || !position ? 1 : 1.03 }}
+                    whileTap={{ scale: !name.trim() || !position ? 1 : 0.97 }}
+                    onClick={handleAddProspect}
+                    disabled={saving || !name.trim() || !position}
+                    className="px-6 py-2.5 text-sm font-bold bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg shadow-glow-blue transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {saving ? 'Saving...' : 'Add Prospect'}
+                  </motion.button>
+                </div>
               </div>
-            </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-            <div className="p-6 border-t border-gray-200 flex justify-between">
-              <button
-                onClick={() => handleDeleteProspect(selectedProspect.id)}
-                className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors flex items-center space-x-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete Prospect</span>
-              </button>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      {/* Prospect Detail Panel */}
+      <AnimatePresence>
+        {showDetail && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDetail(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
+            <motion.div
+              initial={{ opacity: 0, x: 80 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 80 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="fixed right-0 top-0 h-full z-50 w-full max-w-lg flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="glass-strong h-full flex flex-col border-l border-white/10 shadow-2xl overflow-hidden">
+
+                {detailLoading ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <Loader2 className="w-8 h-8 animate-spin text-ice-400" />
+                  </div>
+                ) : selectedProspect ? (
+                  <>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5 shrink-0">
+                      <div>
+                        <h2 className="text-xl font-bold text-white">{selectedProspect.name}</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-ice-400">{selectedProspect.position}</span>
+                          <span className="text-white/20">·</span>
+                          <span className="text-xs text-ice-400">Class of {selectedProspect.gradYear}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${STATUS_CONFIG[selectedProspect.status as ProspectStatus]?.bg}`}>
+                            {STATUS_CONFIG[selectedProspect.status as ProspectStatus]?.icon} {selectedProspect.status}
+                          </span>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowDetail(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-ice-400 hover:text-white hover:bg-white/10 transition-all">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+                      {/* Status + Rating */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}>Recruitment Status</label>
+                          <select
+                            value={selectedProspect.status}
+                            onChange={e => handleUpdateStatus(selectedProspect, e.target.value as ProspectStatus)}
+                            className={inputClass}
+                            style={{ colorScheme: 'dark' }}
+                          >
+                            {STATUSES.map(s => <option key={s} value={s} style={{ backgroundColor: '#1e3a5f' }}>{STATUS_CONFIG[s].icon} {s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelClass}>Scout Rating</label>
+                          <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg flex items-center gap-2">
+                            <StarRating rating={selectedProspect.scoutRating ?? 0} />
+                            <span className="text-xs text-ice-400">({selectedProspect.scoutRating}/5)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info cards */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedProspect.currentTeam && (
+                          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                            <p className="text-xs font-bold text-ice-400 uppercase tracking-wider mb-1">Current Team</p>
+                            <p className="text-sm font-semibold text-white">{selectedProspect.currentTeam}</p>
+                          </div>
+                        )}
+                        {selectedProspect.contactInfo && (
+                          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                            <p className="text-xs font-bold text-ice-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Phone className="w-3 h-3" /> Contact</p>
+                            <p className="text-sm font-semibold text-white truncate">{selectedProspect.contactInfo}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Coaching notes */}
+                      {selectedProspect.coachingNotes && (
+                        <div>
+                          <label className="text-xs font-bold text-ice-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <TrendingUp className="w-3.5 h-3.5" /> Coaching Notes & Evaluation
+                          </label>
+                          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                            <p className="text-sm text-ice-200 leading-relaxed whitespace-pre-wrap">{selectedProspect.coachingNotes}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Videos */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="text-xs font-bold text-ice-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Video className="w-3.5 h-3.5" /> Highlight Videos ({prospectVideos.length})
+                          </label>
+                          <button
+                            onClick={() => setShowVideoForm(!showVideoForm)}
+                            className="flex items-center gap-1 text-xs font-bold text-ice-400 hover:text-ice-200 transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add Video
+                          </button>
+                        </div>
+
+                        <AnimatePresence>
+                          {showVideoForm && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mb-3 space-y-2 p-4 bg-white/5 rounded-xl border border-white/10"
+                            >
+                              <input value={videoTitle} onChange={e => setVideoTitle(e.target.value)} placeholder="Video title" className={inputClass} style={{ colorScheme: 'dark' }} />
+                              <input type="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube / Hudl URL" className={inputClass} style={{ colorScheme: 'dark' }} />
+                              <div className="flex gap-2">
+                                <button onClick={() => setShowVideoForm(false)} className="flex-1 py-2 text-xs font-semibold text-ice-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Cancel</button>
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={handleAddVideo}
+                                  disabled={addingVideo || !videoTitle.trim() || !videoUrl.trim()}
+                                  className="flex-1 py-2 text-xs font-bold bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                >
+                                  {addingVideo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                  {addingVideo ? 'Adding...' : 'Add'}
+                                </motion.button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {prospectVideos.length > 0 ? (
+                          <div className="space-y-2">
+                            {prospectVideos.map(video => (
+                              <a
+                                key={video.id}
+                                href={video.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all group"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-goal-500/20 flex items-center justify-center">
+                                    <Video className="w-4 h-4 text-goal-400" />
+                                  </div>
+                                  <span className="text-sm font-semibold text-white">{video.title}</span>
+                                </div>
+                                <ExternalLink className="w-4 h-4 text-ice-500 group-hover:text-ice-300 transition-colors" />
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-xl">
+                            <Video className="w-8 h-8 text-ice-500 mx-auto mb-2" />
+                            <p className="text-ice-500 text-sm">No videos added yet</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Delete confirm */}
+                      <AnimatePresence>
+                        {showDeleteConfirm && (
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="rounded-xl border border-goal-500/40 bg-goal-500/10 p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <AlertTriangle className="w-4 h-4 text-goal-400" />
+                              <p className="text-sm font-bold text-goal-300">Delete {selectedProspect.name}?</p>
+                            </div>
+                            <p className="text-xs text-goal-200 mb-4">This cannot be undone.</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-3 py-2 text-xs font-semibold text-ice-300 bg-white/5 hover:bg-white/10 rounded-lg transition-all">Cancel</button>
+                              <button onClick={handleDeleteProspect} disabled={deleting} className="flex-1 px-3 py-2 text-xs font-bold text-white bg-goal-600 hover:bg-goal-500 rounded-lg transition-all disabled:opacity-60 flex items-center justify-center gap-1">
+                                {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-white/5 shrink-0">
+                      <button
+                        onClick={() => { setShowDeleteConfirm(true) }}
+                        disabled={showDeleteConfirm}
+                        className="p-2.5 text-goal-400 hover:text-goal-300 hover:bg-goal-500/10 rounded-lg transition-all disabled:opacity-40"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setShowDetail(false)} className="px-5 py-2.5 text-sm font-semibold text-ice-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">
+                        Close
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }
