@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User } from 'lucide-react'
+import { User, ImagePlus } from 'lucide-react'
 import { fetchPlayers, Player } from '../api/api'
 import LoadingSpinner from './LoadingSpinner'
 import AddPlayerModal from './AddPlayerModal'
+import PlayerProfileModal from './PlayerProfileModal'
+import RosterImportModal from './RosterImportModal'
 
 interface RosterProps {
   teamId: string
@@ -14,6 +16,9 @@ export default function Roster({ teamId }: RosterProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [search, setSearch] = useState('')
   const [positionFilter, setPositionFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
@@ -107,14 +112,24 @@ export default function Roster({ teamId }: RosterProps) {
           <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow">Team Roster</h2>
           <p className="text-ice-200 mt-1">{filteredPlayers.length} of {players.length} players</p>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all"
-        >
-          + Add Player
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowImportModal(true)}
+            className="px-5 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+          >
+            <ImagePlus className="w-4 h-4" /> Import from Photo
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-semibold shadow-glow-blue hover:shadow-xl transition-all"
+          >
+            + Add Player
+          </motion.button>
+        </div>
       </div>
 
       <div className="glass-strong rounded-lg mb-6 p-4">
@@ -204,7 +219,12 @@ export default function Roster({ teamId }: RosterProps) {
                     </span>
                   </td>
                   <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm">
-                    <button className="text-ice-400 hover:text-ice-200 font-semibold transition-colors">View</button>
+                    <button
+                      onClick={() => { setSelectedPlayer(player); setShowProfileModal(true) }}
+                      className="text-ice-400 hover:text-ice-200 font-semibold transition-colors"
+                    >
+                      View
+                    </button>
                   </td>
                 </motion.tr>
               ))}
@@ -218,6 +238,21 @@ export default function Roster({ teamId }: RosterProps) {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onPlayerAdded={reloadPlayers}
+      />
+
+      <PlayerProfileModal
+        player={selectedPlayer}
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onPlayerUpdated={reloadPlayers}
+        onPlayerDeleted={reloadPlayers}
+      />
+
+      <RosterImportModal
+        teamId={teamId}
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={reloadPlayers}
       />
     </div>
   )

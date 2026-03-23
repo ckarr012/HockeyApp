@@ -96,21 +96,19 @@ const migrations = [
     id TEXT PRIMARY KEY,
     team_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    lw_id TEXT,
-    c_id TEXT,
-    rw_id TEXT,
-    ld_id TEXT,
-    rd_id TEXT,
-    g_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (team_id) REFERENCES teams(id),
-    FOREIGN KEY (lw_id) REFERENCES players(id),
-    FOREIGN KEY (c_id) REFERENCES players(id),
-    FOREIGN KEY (rw_id) REFERENCES players(id),
-    FOREIGN KEY (ld_id) REFERENCES players(id),
-    FOREIGN KEY (rd_id) REFERENCES players(id),
-    FOREIGN KEY (g_id) REFERENCES players(id)
+    FOREIGN KEY (team_id) REFERENCES teams(id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS lineup_slots (
+    id TEXT PRIMARY KEY,
+    lineup_id TEXT NOT NULL,
+    line_type TEXT NOT NULL,
+    position TEXT NOT NULL,
+    player_id TEXT,
+    FOREIGN KEY (lineup_id) REFERENCES lineups(id),
+    FOREIGN KEY (player_id) REFERENCES players(id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS player_stats (
@@ -180,6 +178,15 @@ const migrations = [
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (team_id) REFERENCES teams(id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS game_notes (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    timestamp_seconds INTEGER DEFAULT 0,
+    note TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games(id)
   )`
 ];
 

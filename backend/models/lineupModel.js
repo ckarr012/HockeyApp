@@ -1,67 +1,122 @@
 const { getDb, saveDb } = require('../db/database');
 
+const LINE_STRUCTURE = {
+  forward_1: ['lw', 'c', 'rw'],
+  forward_2: ['lw', 'c', 'rw'],
+  forward_3: ['lw', 'c', 'rw'],
+  forward_4: ['lw', 'c', 'rw'],
+  defense_1: ['ld', 'rd'],
+  defense_2: ['ld', 'rd'],
+  defense_3: ['ld', 'rd'],
+  pp1: ['lw', 'c', 'rw', 'ld', 'rd'],
+  pp2: ['lw', 'c', 'rw', 'ld', 'rd'],
+  pk1: ['f1', 'f2', 'ld', 'rd'],
+  pk2: ['f1', 'f2', 'ld', 'rd'],
+  goalies: ['starter', 'backup'],
+};
+
 const getLineupsByTeamId = async (teamId) => {
   const db = await getDb();
-  const result = db.exec(`
-    SELECT 
-      l.*,
-      lw.first_name as lw_first_name, lw.last_name as lw_last_name, lw.jersey_number as lw_number,
-      c.first_name as c_first_name, c.last_name as c_last_name, c.jersey_number as c_number,
-      rw.first_name as rw_first_name, rw.last_name as rw_last_name, rw.jersey_number as rw_number,
-      ld.first_name as ld_first_name, ld.last_name as ld_last_name, ld.jersey_number as ld_number,
-      rd.first_name as rd_first_name, rd.last_name as rd_last_name, rd.jersey_number as rd_number,
-      g.first_name as g_first_name, g.last_name as g_last_name, g.jersey_number as g_number
-    FROM lineups l
-    LEFT JOIN players lw ON l.lw_id = lw.id
-    LEFT JOIN players c ON l.c_id = c.id
-    LEFT JOIN players rw ON l.rw_id = rw.id
-    LEFT JOIN players ld ON l.ld_id = ld.id
-    LEFT JOIN players rd ON l.rd_id = rd.id
-    LEFT JOIN players g ON l.g_id = g.id
-    WHERE l.team_id = ?
-  `, [teamId]);
-  
-  if (result.length === 0) return [];
-  
-  const columns = result[0].columns;
-  return result[0].values.map(row => {
-    const lineup = {};
-    columns.forEach((col, i) => lineup[col] = row[i]);
-    return lineup;
+
+  const lineupsResult = db.exec('SELECT * FROM lineups WHERE team_id = ? ORDER BY created_at', [teamId]);
+  if (lineupsResult.length === 0) return [];
+
+  const lineupCols = lineupsResult[0].columns;
+  const lineupRows = lineupsResult[0].values.map(row => {
+    const obj = {};
+    lineupCols.forEach((col, i) => obj[col] = row[i]);
+    return obj;
   });
+
+  const lineupIds = lineupRows.map(l => `'${l.id}'`).join(',');
+
+  const slotsResult = db.exec(`
+    SELECT ls.lineup_id, ls.line_type, ls.position, ls.player_id,
+           p.first_name, p.last_name, p.jersey_number, p.position AS player_position, p.status
+    FROM lineup_slots ls
+    LEFT JOIN players p ON ls.player_id = p.id
+    WHERE ls.lineup_id IN (${lineupIds})
+  `);
+
+  const slotRows = [];
+  if (slotsResult.length > 0) {
+    const slotCols = slotsResult[0].columns;
+    slotsResult[0].values.forEach(row => {
+      const obj = {};
+      slotCols.forEach((col, i) => obj[col] = row[i]);
+      slotRows.push(obj);
+    });
+  }
+
+  const slotsByLineup = {};
+  slotRows.forEach(slot => {
+    if (!slotsByLineup[slot.lineup_id]) slotsByLineup[slot.lineup_id] = {};
+    if (!slotsByLineup[slot.lineup_id][slot.line_type]) slotsByLineup[slot.lineup_id][slot.line_type] = {};
+    slotsByLineup[slot.lineup_id][slot.line_type][slot.position] = slot.player_id ? {
+      id: slot.player_id,
+      firstName: slot.first_name,
+      lastName: slot.last_name,
+      jerseyNumber: slot.jersey_number,
+      playerPosition: slot.player_position,
+      status: slot.status,
+    } : null;
+  });
+
+  return lineupRows.map(lineup => ({
+    id: lineup.id,
+    teamId: lineup.team_id,
+    name: lineup.name,
+    createdAt: lineup.created_at,
+    updatedAt: lineup.updated_at,
+    slots: slotsByLineup[lineup.id] || {},
+  }));
 };
 
-const createLineup = async (lineupData) => {
+const createLineup = async (teamId, name) => {
   const db = await getDb();
-  const { id, teamId, name, lw_id, c_id, rw_id, ld_id, rd_id, g_id } = lineupData;
-  
-  db.run(
-    `INSERT INTO lineups (id, team_id, name, lw_id, c_id, rw_id, ld_id, rd_id, g_id) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, teamId, name, lw_id || null, c_id || null, rw_id || null, ld_id || null, rd_id || null, g_id || null]
-  );
-  
+  const id = crypto.randomUUID();
+
+  db.run('INSERT INTO lineups (id, team_id, name) VALUES (?, ?, ?)', [id, teamId, name]);
+
+  for (const [lineType, positions] of Object.entries(LINE_STRUCTURE)) {
+    for (const position of positions) {
+      db.run(
+        'INSERT INTO lineup_slots (id, lineup_id, line_type, position, player_id) VALUES (?, ?, ?, ?, ?)',
+        [crypto.randomUUID(), id, lineType, position, null]
+      );
+    }
+  }
+
   await saveDb();
-  return { id, teamId, name, lw_id, c_id, rw_id, ld_id, rd_id, g_id };
+  return { id, teamId, name, slots: {} };
 };
 
-const updateLineup = async (lineupId, lineupData) => {
+const updateLineupSlots = async (lineupId, name, slots) => {
   const db = await getDb();
-  const { name, lw_id, c_id, rw_id, ld_id, rd_id, g_id } = lineupData;
-  
-  db.run(
-    `UPDATE lineups 
-     SET name = ?, lw_id = ?, c_id = ?, rw_id = ?, ld_id = ?, rd_id = ?, g_id = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [name, lw_id || null, c_id || null, rw_id || null, ld_id || null, rd_id || null, g_id || null, lineupId]
-  );
-  
+
+  if (name) {
+    db.run('UPDATE lineups SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [name, lineupId]);
+  } else {
+    db.run('UPDATE lineups SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [lineupId]);
+  }
+
+  for (const [lineType, positions] of Object.entries(slots)) {
+    for (const [position, playerId] of Object.entries(positions)) {
+      db.run(
+        'UPDATE lineup_slots SET player_id = ? WHERE lineup_id = ? AND line_type = ? AND position = ?',
+        [playerId || null, lineupId, lineType, position]
+      );
+    }
+  }
+
   await saveDb();
-  return { id: lineupId, ...lineupData };
 };
 
-module.exports = {
-  getLineupsByTeamId,
-  createLineup,
-  updateLineup
+const deleteLineup = async (lineupId) => {
+  const db = await getDb();
+  db.run('DELETE FROM lineup_slots WHERE lineup_id = ?', [lineupId]);
+  db.run('DELETE FROM lineups WHERE id = ?', [lineupId]);
+  await saveDb();
 };
+
+module.exports = { getLineupsByTeamId, createLineup, updateLineupSlots, deleteLineup };

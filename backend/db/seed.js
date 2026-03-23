@@ -361,33 +361,33 @@ const drillsTeamB = [
   }
 ];
 
-const lineupsTeamA = [
-  {
-    id: uuidv4(),
-    team_id: teamAId,
-    name: 'Starting Lineup',
-    lw_id: playerA3Id,
-    c_id: playerA1Id,
-    rw_id: playerA5Id,
-    ld_id: playerA4Id,
-    rd_id: null,
-    g_id: playerA2Id
-  }
-];
+const LINE_STRUCTURE = {
+  forward_1: ['lw', 'c', 'rw'],
+  forward_2: ['lw', 'c', 'rw'],
+  forward_3: ['lw', 'c', 'rw'],
+  forward_4: ['lw', 'c', 'rw'],
+  defense_1: ['ld', 'rd'],
+  defense_2: ['ld', 'rd'],
+  defense_3: ['ld', 'rd'],
+  pp1: ['lw', 'c', 'rw', 'ld', 'rd'],
+  pp2: ['lw', 'c', 'rw', 'ld', 'rd'],
+  pk1: ['f1', 'f2', 'ld', 'rd'],
+  pk2: ['f1', 'f2', 'ld', 'rd'],
+  goalies: ['starter', 'backup'],
+};
 
-const lineupsTeamB = [
-  {
-    id: uuidv4(),
-    team_id: teamBId,
-    name: 'Starting Lineup',
-    lw_id: playerB3Id,
-    c_id: playerB1Id,
-    rw_id: playerB5Id,
-    ld_id: playerB4Id,
-    rd_id: null,
-    g_id: playerB2Id
+const seedLineup = (db, teamId, name, assignments) => {
+  const lineupId = uuidv4();
+  db.run('INSERT INTO lineups (id, team_id, name) VALUES (?, ?, ?)', [lineupId, teamId, name]);
+  for (const [lineType, positions] of Object.entries(LINE_STRUCTURE)) {
+    for (const position of positions) {
+      db.run(
+        'INSERT INTO lineup_slots (id, lineup_id, line_type, position, player_id) VALUES (?, ?, ?, ?, ?)',
+        [uuidv4(), lineupId, lineType, position, assignments[lineType]?.[position] || null]
+      );
+    }
   }
-];
+};
 
 const playerStatsTeamA = [
   { id: uuidv4(), player_id: playerA1Id, game_id: gameA2Id, goals: 2, assists: 1, shots: 5, blocks: 0, pims: 0 },
@@ -563,6 +563,7 @@ const prospectVideosTeamB = [
     db.run('DELETE FROM prospects');
     db.run('DELETE FROM scouting_reports');
     db.run('DELETE FROM player_stats');
+    db.run('DELETE FROM lineup_slots');
     db.run('DELETE FROM lineups');
     db.run('DELETE FROM drills');
     db.run('DELETE FROM practices');
@@ -621,11 +622,17 @@ const prospectVideosTeamB = [
     });
     console.log(`✓ Inserted ${drillsTeamA.length + drillsTeamB.length} drills`);
 
-    [...lineupsTeamA, ...lineupsTeamB].forEach(lineup => {
-      db.run(`INSERT INTO lineups (id, team_id, name, lw_id, c_id, rw_id, ld_id, rd_id, g_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [lineup.id, lineup.team_id, lineup.name, lineup.lw_id, lineup.c_id, lineup.rw_id, lineup.ld_id, lineup.rd_id, lineup.g_id]);
+    seedLineup(db, teamAId, 'Starting Lineup', {
+      forward_1: { lw: playerA3Id, c: playerA1Id, rw: playerA5Id },
+      defense_1: { ld: playerA4Id },
+      goalies: { starter: playerA2Id },
     });
-    console.log(`✓ Inserted ${lineupsTeamA.length + lineupsTeamB.length} lineups`);
+    seedLineup(db, teamBId, 'Starting Lineup', {
+      forward_1: { lw: playerB3Id, c: playerB1Id, rw: playerB5Id },
+      defense_1: { ld: playerB4Id },
+      goalies: { starter: playerB2Id },
+    });
+    console.log('✓ Inserted 2 lineups with slots');
 
     [...playerStatsTeamA, ...playerStatsTeamB].forEach(stat => {
       db.run(`INSERT INTO player_stats (id, player_id, game_id, goals, assists, shots, blocks, pims) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -56,8 +56,27 @@ const getPlayerById = async (playerId) => {
   return player;
 };
 
+const updatePlayerFull = async (playerId, data) => {
+  const db = await getDb();
+  const { firstName, lastName, jerseyNumber, position, shoots, height, weight, birthDate, status, injuryNote } = data;
+  db.run(
+    `UPDATE players SET first_name=?, last_name=?, jersey_number=?, position=?, shoots=?, height=?, weight=?, birth_date=?, status=?, injury_note=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+    [firstName, lastName, jerseyNumber, position, shoots ?? null, height ?? null, weight ?? null, birthDate ?? null, status, injuryNote ?? null, playerId]
+  );
+  await saveDb();
+  return { id: playerId, firstName, lastName, jerseyNumber, position, shoots, height, weight, birthDate, status, injuryNote };
+};
+
+const deletePlayer = async (playerId) => {
+  const db = await getDb();
+  db.run(`DELETE FROM players WHERE id = ?`, [playerId]);
+  await saveDb();
+};
+
 module.exports = {
   createPlayer,
   updatePlayerStatus,
-  getPlayerById
+  getPlayerById,
+  updatePlayerFull,
+  deletePlayer
 };

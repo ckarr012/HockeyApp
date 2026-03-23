@@ -75,6 +75,37 @@ export default function Stats({ teamId }: StatsProps) {
         </motion.div>
       </motion.div>
 
+      {/* Summary cards */}
+      {stats.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Games Played', value: Math.max(...stats.map(p => p.games_played)), icon: '🏒', color: 'from-ice-500/20 to-ice-600/20 border-ice-500/30' },
+            { label: 'Team Goals', value: stats.reduce((sum, p) => sum + p.total_goals, 0), icon: '🚨', color: 'from-goal-500/20 to-goal-600/20 border-goal-500/30' },
+            { label: 'Team Assists', value: stats.reduce((sum, p) => sum + p.total_assists, 0), icon: '🎯', color: 'from-purple-500/20 to-purple-600/20 border-purple-500/30' },
+            {
+              label: 'Points Leader',
+              value: `${stats[0].first_name} ${stats[0].last_name}`,
+              sub: `${stats[0].total_points} pts`,
+              icon: '🏆',
+              color: 'from-yellow-500/20 to-amber-600/20 border-yellow-500/30'
+            },
+          ].map((card, i) => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className={`glass-strong rounded-xl p-5 border bg-gradient-to-br ${card.color}`}
+            >
+              <div className="text-2xl mb-2">{card.icon}</div>
+              <p className="text-xs font-bold text-ice-400 uppercase tracking-wider mb-1">{card.label}</p>
+              <p className="text-xl font-black text-white truncate">{card.value}</p>
+              {'sub' in card && card.sub && <p className="text-sm text-ice-300 mt-0.5">{card.sub}</p>}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
       {stats.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

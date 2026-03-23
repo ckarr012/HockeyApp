@@ -1,9 +1,16 @@
+# Hockey App — Games/Calendar Code Dump
+Copy everything below and paste into Claude.
+
+---
+
+## FILE: src/components/CalendarView.tsx
+(This is the main games/schedule UI — there is no separate Games.tsx)
+
+```tsx
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Plus, X, MapPin, Clock, Video as VideoIcon, Users, Save, Trash2, Loader2, Sparkles } from 'lucide-react'
-import { fetchCalendar, createGame, createPractice, createVideo, deletePractice, deleteGame, deleteVideo, fetchGames, generatePracticePlan, CalendarEvent, Game, PracticePlan } from '../api/api'
-import GameReviewPanel from './GameReviewPanel'
-import PracticePlanModal from './PracticePlanModal'
+import { ChevronLeft, ChevronRight, Plus, X, MapPin, Clock, Video as VideoIcon, Users, Save, Trash2 } from 'lucide-react'
+import { fetchCalendar, createGame, createPractice, createVideo, deletePractice, deleteGame, deleteVideo, CalendarEvent } from '../api/api'
 import { 
   format, 
   startOfMonth, 
@@ -44,13 +51,6 @@ export default function CalendarView({ teamId }: CalendarViewProps) {
   const [videoTitle, setVideoTitle] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
 
-  const [showGameReview, setShowGameReview] = useState(false)
-  const [reviewingGame, setReviewingGame] = useState<Game | null>(null)
-  const [practicePlan, setPracticePlan] = useState<PracticePlan | null>(null)
-  const [showPracticePlan, setShowPracticePlan] = useState(false)
-  const [generatingPlan, setGeneratingPlan] = useState(false)
-  const [games, setGames] = useState<Game[]>([])
-
   useEffect(() => {
     loadEvents()
   }, [teamId])
@@ -61,8 +61,6 @@ export default function CalendarView({ teamId }: CalendarViewProps) {
       setError(null)
       const data = await fetchCalendar(teamId)
       setEvents(data)
-      const gamesData = await fetchGames(teamId)
-      setGames(gamesData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load calendar')
       console.error('Error loading calendar:', err)
@@ -507,23 +505,13 @@ export default function CalendarView({ teamId }: CalendarViewProps) {
                 >
                   Close
                 </motion.button>
-                {selectedEvent.type === 'game' && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      const game = games.find(g => g.id === selectedEvent.id)
-                      if (game) {
-                        setReviewingGame(game)
-                        setShowGameReview(true)
-                        setShowQuickView(false)
-                      }
-                    }}
-                    className="px-5 py-2 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-bold shadow-glow-blue transition-all"
-                  >
-                    🎥 Review Game
-                  </motion.button>
-                )}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-5 py-2 bg-gradient-to-r from-ice-500 to-ice-600 text-white rounded-lg font-bold shadow-glow-blue transition-all"
+                >
+                  View Details
+                </motion.button>
                 <motion.button
                   onClick={() => handleDeleteEvent(selectedEvent)}
                   whileHover={{ scale: 1.05 }}
@@ -767,57 +755,596 @@ export default function CalendarView({ teamId }: CalendarViewProps) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Game Review Panel */}
-      {reviewingGame && (
-        <GameReviewPanel
-          game={reviewingGame}
-          teamId={teamId}
-          isOpen={showGameReview}
-          onClose={() => { setShowGameReview(false); setReviewingGame(null) }}
-          onGeneratePlan={async (game: Game) => {
-            try {
-              setGeneratingPlan(true)
-              const plan = await generatePracticePlan(game.id, teamId, game)
-              setPracticePlan(plan)
-              setShowPracticePlan(true)
-            } catch (err) {
-              console.error('Error generating plan:', err)
-              alert('Failed to generate practice plan. Please try again.')
-            } finally {
-              setGeneratingPlan(false)
-            }
-          }}
-        />
-      )}
-
-      {/* Practice Plan Modal */}
-      {practicePlan && reviewingGame && (
-        <PracticePlanModal
-          plan={practicePlan}
-          game={reviewingGame}
-          isOpen={showPracticePlan}
-          onClose={() => { setShowPracticePlan(false); setPracticePlan(null) }}
-        />
-      )}
-
-      {/* Generating overlay */}
-      <AnimatePresence>
-        {generatingPlan && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="glass-strong rounded-2xl p-10 flex flex-col items-center gap-5 border border-white/10 shadow-2xl">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-8 h-8 text-white animate-pulse" />
-              </div>
-              <div className="text-center">
-                <p className="text-white text-xl font-bold">Generating Practice Plan</p>
-                <p className="text-ice-300 text-sm mt-1">Claude is analyzing your game notes and stats...</p>
-              </div>
-              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
+```
+
+---
+
+## FILE: src/api/api.ts (game/calendar-related types and functions only)
+
+```ts
+export interface Game {
+  id: string;
+  teamId: string;
+  opponent: string;
+  gameDate: string;
+  location: string;
+  homeAway: string;
+  status: string;
+  teamScore: number | null;
+  opponentScore: number | null;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  type: 'game' | 'practice' | 'film';
+  location?: string;
+  homeAway?: string;
+  status?: string;
+  teamScore?: number | null;
+  opponentScore?: number | null;
+  opponent?: string;
+  focus?: string;
+  duration?: number;
+  url?: string;
+  gameId?: string;
+}
+
+export async function fetchGames(teamId: string): Promise<Game[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/games`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch games: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.games;
+}
+
+export async function createGame(teamId: string, gameData: {
+  game_date: string;
+  opponent: string;
+  location: string;
+  home_away: string;
+  status?: string;
+}): Promise<{ gameId: string }> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/games`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(gameData),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create game: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function updateGameScore(gameId: string, teamScore: number, opponentScore: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/games/${gameId}/score`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ teamScore, opponentScore }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update game score: ${response.statusText}`);
+  }
+}
+
+export async function deleteGame(gameId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/teams/games/${gameId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete game: ${response.statusText}`);
+  }
+}
+
+export async function fetchCalendar(teamId: string): Promise<CalendarEvent[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/calendar`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch calendar: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.events;
+}
+```
+
+---
+
+## FILE: backend/routes/teamRoutes.js (game routes live here)
+
+```js
+const express = require('express');
+const router = express.Router();
+const { getPlayers, addPlayer, getDashboard, getGames, addGame, updateScore, removeGame, removeVideo, updateSettings } = require('../controllers/teamController');
+
+router.get('/:teamId/players', getPlayers);
+router.post('/:teamId/players', addPlayer);
+
+router.get('/:teamId/dashboard', getDashboard);
+
+router.get('/:teamId/games', getGames);
+router.post('/:teamId/games', addGame);
+router.put('/games/:gameId/score', updateScore);
+router.delete('/games/:gameId', removeGame);
+router.delete('/videos/:videoId', removeVideo);
+
+router.put('/:teamId/settings', updateSettings);
+
+module.exports = router;
+```
+
+---
+
+## FILE: backend/routes/calendarRoutes.js
+
+```js
+const express = require('express');
+const router = express.Router();
+const { getCalendar } = require('../controllers/calendarController');
+
+router.get('/:teamId/calendar', getCalendar);
+
+module.exports = router;
+```
+
+---
+
+## FILE: backend/controllers/teamController.js (game-related methods)
+
+```js
+const {
+  getTeamById,
+  getPlayersByTeamId,
+  getGamesByTeamId,
+  getVideosByTeamId,
+  getPracticesByTeamId,
+  createGame,
+  updateGameScore,
+  deleteGame,
+  deleteVideo,
+  updateTeamSettings
+} = require('../models/teamModel');
+const { createPlayer } = require('../models/playerModel');
+
+const getGames = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    const team = await getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const games = await getGamesByTeamId(teamId);
+    
+    res.json({ games });
+  } catch (error) {
+    console.error('Error in getGames:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const addGame = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { game_date, opponent, location, home_away, status } = req.body;
+    
+    const gameId = await createGame(teamId, {
+      game_date,
+      opponent,
+      location,
+      home_away,
+      status
+    });
+    
+    res.status(201).json({ message: 'Game created successfully', gameId });
+  } catch (error) {
+    console.error('Error in addGame:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const updateScore = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { teamScore, opponentScore } = req.body;
+    
+    await updateGameScore(gameId, teamScore, opponentScore);
+    
+    res.json({ message: 'Score updated successfully' });
+  } catch (error) {
+    console.error('Error in updateScore:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const removeGame = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    await deleteGame(gameId);
+    res.json({ message: 'Game deleted successfully' });
+  } catch (error) {
+    console.error('Error in removeGame:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const getDashboard = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    const team = await getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const players = await getPlayersByTeamId(teamId);
+    const games = await getGamesByTeamId(teamId);
+    const videos = await getVideosByTeamId(teamId);
+    const practices = await getPracticesByTeamId(teamId);
+
+    const activePlayers = players.filter(p => p.status === 'active').length;
+    const injuredPlayers = players.filter(p => p.status === 'injured').length;
+    
+    const completedGames = games.filter(g => g.status === 'completed');
+    const wins = completedGames.filter(g => g.teamScore > g.opponentScore).length;
+    const losses = completedGames.filter(g => g.teamScore < g.opponentScore).length;
+    const ties = completedGames.filter(g => g.teamScore === g.opponentScore).length;
+    
+    const upcomingGames = games.filter(g => g.status === 'scheduled');
+    const nextGame = upcomingGames.sort((a, b) => 
+      new Date(a.gameDate) - new Date(b.gameDate)
+    )[0] || null;
+
+    const upcomingPractices = practices.sort((a, b) => 
+      new Date(a.practice_date) - new Date(b.practice_date)
+    );
+    const nextPractice = upcomingPractices[0] || null;
+
+    const dashboard = {
+      team: {
+        id: team.id,
+        name: team.name,
+        division: team.division,
+        season: team.season
+      },
+      stats: {
+        totalPlayers: players.length,
+        activePlayers,
+        injuredPlayers,
+        totalGames: games.length,
+        wins,
+        losses,
+        ties,
+        upcomingGames: upcomingGames.length,
+        totalVideos: videos.length,
+        totalPractices: practices.length
+      },
+      nextGame,
+      nextPractice
+    };
+
+    res.json(dashboard);
+  } catch (error) {
+    console.error('Error in getDashboard:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = {
+  getPlayers,
+  addPlayer,
+  getDashboard,
+  getGames,
+  addGame,
+  updateScore,
+  removeGame,
+  removeVideo,
+  updateSettings
+};
+```
+
+---
+
+## FILE: backend/controllers/calendarController.js
+
+```js
+const { getCalendarEvents } = require('../models/calendarModel');
+const { getTeamById } = require('../models/teamModel');
+
+const getCalendar = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    const team = await getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const events = await getCalendarEvents(teamId);
+    
+    res.json({ events });
+  } catch (error) {
+    console.error('Error in getCalendar:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = {
+  getCalendar
+};
+```
+
+---
+
+## FILE: backend/models/teamModel.js (game-related model functions)
+
+```js
+const { getDb } = require('../db/database');
+
+const getGamesByTeamId = async (teamId) => {
+  const db = await getDb();
+  const result = db.exec('SELECT * FROM games WHERE team_id = ?', [teamId]);
+  if (result.length === 0) return [];
+  
+  const columns = result[0].columns;
+  return result[0].values.map(row => {
+    const game = {};
+    columns.forEach((col, i) => game[col] = row[i]);
+    // Transform to camelCase for frontend
+    return {
+      id: game.id,
+      teamId: game.team_id,
+      opponent: game.opponent,
+      gameDate: game.game_date,
+      location: game.location,
+      homeAway: game.home_away,
+      status: game.status,
+      teamScore: game.team_score,
+      opponentScore: game.opponent_score,
+      createdAt: game.created_at,
+      updatedAt: game.updated_at
+    };
+  });
+};
+
+const createGame = async (teamId, gameData) => {
+  const { getDb, saveDb } = require('../db/database');
+  const { v4: uuidv4 } = require('uuid');
+  
+  const db = await getDb();
+  const gameId = uuidv4();
+  
+  db.run(
+    `INSERT INTO games (id, team_id, game_date, opponent, location, home_away, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [gameId, teamId, gameData.game_date, gameData.opponent, gameData.location, gameData.home_away, gameData.status || 'scheduled']
+  );
+  
+  await saveDb();
+  return gameId;
+};
+
+const updateGameScore = async (gameId, teamScore, opponentScore) => {
+  const { getDb, saveDb } = require('../db/database');
+  const db = await getDb();
+  
+  db.run(
+    'UPDATE games SET team_score = ?, opponent_score = ?, status = ? WHERE id = ?',
+    [teamScore, opponentScore, 'completed', gameId]
+  );
+  
+  await saveDb();
+};
+
+const deleteGame = async (gameId) => {
+  const { getDb, saveDb } = require('../db/database');
+  const db = await getDb();
+  
+  db.run('DELETE FROM games WHERE id = ?', [gameId]);
+  
+  await saveDb();
+};
+```
+
+---
+
+## FILE: backend/models/calendarModel.js
+
+```js
+const { getDb } = require('../db/database');
+
+const getCalendarEvents = async (teamId) => {
+  const db = await getDb();
+  
+  // Fetch games
+  const gamesResult = db.exec('SELECT * FROM games WHERE team_id = ?', [teamId]);
+  const games = gamesResult.length > 0 
+    ? gamesResult[0].values.map(row => {
+        const game = {};
+        gamesResult[0].columns.forEach((col, i) => game[col] = row[i]);
+        return {
+          id: game.id,
+          title: `vs ${game.opponent}`,
+          date: game.game_date,
+          type: 'game',
+          location: game.location,
+          homeAway: game.home_away,
+          status: game.status,
+          teamScore: game.team_score,
+          opponentScore: game.opponent_score,
+          opponent: game.opponent
+        };
+      })
+    : [];
+
+  // Fetch practices
+  const practicesResult = db.exec('SELECT * FROM practices WHERE team_id = ?', [teamId]);
+  const practices = practicesResult.length > 0
+    ? practicesResult[0].values.map(row => {
+        const practice = {};
+        practicesResult[0].columns.forEach((col, i) => practice[col] = row[i]);
+        return {
+          id: practice.id,
+          title: practice.focus || 'Practice',
+          date: practice.practice_date,
+          type: 'practice',
+          focus: practice.focus,
+          duration: practice.duration,
+          location: practice.location
+        };
+      })
+    : [];
+
+  // Fetch videos (film sessions)
+  const videosResult = db.exec('SELECT * FROM videos WHERE team_id = ?', [teamId]);
+  const videos = videosResult.length > 0
+    ? videosResult[0].values.map(row => {
+        const video = {};
+        videosResult[0].columns.forEach((col, i) => video[col] = row[i]);
+        return {
+          id: video.id,
+          title: video.title,
+          date: video.created_at,
+          type: 'film',
+          url: video.url,
+          gameId: video.game_id
+        };
+      })
+    : [];
+
+  // Combine and sort by date
+  const allEvents = [...games, ...practices, ...videos].sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+
+  return allEvents;
+};
+
+module.exports = {
+  getCalendarEvents
+};
+```
+
+---
+
+## FILE: backend/db/migrate.js (games table only)
+
+```sql
+CREATE TABLE IF NOT EXISTS games (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  opponent TEXT NOT NULL,
+  game_date DATETIME NOT NULL,
+  location TEXT NOT NULL,
+  home_away TEXT NOT NULL,
+  status TEXT DEFAULT 'scheduled',
+  team_score INTEGER,
+  opponent_score INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES teams(id)
+)
+```
+
+---
+
+## FILE: backend/db/seed.js (game seed data only)
+
+```js
+const gameA1Id = uuidv4();
+const gameA2Id = uuidv4();
+const gameA3Id = uuidv4();
+const gameB1Id = uuidv4();
+const gameB2Id = uuidv4();
+const gameB3Id = uuidv4();
+
+const gamesTeamA = [
+  {
+    id: gameA1Id,
+    team_id: teamAId,
+    opponent: 'State University Bears',
+    game_date: '2026-02-10T19:00:00Z',
+    location: 'Home Arena',
+    home_away: 'home',
+    status: 'scheduled',
+    team_score: null,
+    opponent_score: null
+  },
+  {
+    id: gameA2Id,
+    team_id: teamAId,
+    opponent: 'Tech College Titans',
+    game_date: '2026-02-03T18:00:00Z',
+    location: 'Tech Arena',
+    home_away: 'away',
+    status: 'completed',
+    team_score: 4,
+    opponent_score: 2
+  },
+  {
+    id: gameA3Id,
+    team_id: teamAId,
+    opponent: 'Regional College Eagles',
+    game_date: '2026-01-28T19:30:00Z',
+    location: 'Home Arena',
+    home_away: 'home',
+    status: 'completed',
+    team_score: 3,
+    opponent_score: 3
+  }
+];
+
+const gamesTeamB = [
+  {
+    id: gameB1Id,
+    team_id: teamBId,
+    opponent: 'Thunder Hawks',
+    game_date: '2026-02-08T18:30:00Z',
+    location: 'Rangers Arena',
+    home_away: 'home',
+    status: 'scheduled',
+    team_score: null,
+    opponent_score: null
+  },
+  {
+    id: gameB2Id,
+    team_id: teamBId,
+    opponent: 'Lightning Bolts',
+    game_date: '2026-02-01T19:00:00Z',
+    location: 'Bolts Arena',
+    home_away: 'away',
+    status: 'completed',
+    team_score: 5,
+    opponent_score: 3
+  },
+  {
+    id: gameB3Id,
+    team_id: teamBId,
+    opponent: 'Storm Eagles',
+    game_date: '2026-01-25T18:00:00Z',
+    location: 'Rangers Arena',
+    home_away: 'home',
+    status: 'completed',
+    team_score: 2,
+    opponent_score: 4
+  }
+];
+```
+
+---
+
+## Architecture Notes
+
+- **No separate Games.tsx** — games are managed through `CalendarView.tsx` which shows games, practices, and film sessions on a monthly calendar grid
+- **Game routes live in `teamRoutes.js`** alongside player and dashboard routes, not in a separate file
+- **Game model functions live in `teamModel.js`** — `getGamesByTeamId`, `createGame`, `updateGameScore`, `deleteGame`
+- **Calendar is a unified view** — `calendarModel.js` fetches games + practices + videos, merges them into `CalendarEvent[]` sorted by date
+- **`StatsEntryModal`** is opened from the game detail view (or schedule) and links to a specific `gameId`
+- **Game statuses**: `scheduled` or `completed` (set to `completed` when score is recorded via `updateGameScore`)

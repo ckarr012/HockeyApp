@@ -10,13 +10,18 @@
     "db:seed": "node db/seed.js",
     "db:reset": "node db/migrate.js && node db/seed.js"
   },
-  "keywords": ["hockey", "coaching", "api"],
+  "keywords": [
+    "hockey",
+    "coaching",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
+    "@anthropic-ai/sdk": "^0.80.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "sql.js": "^1.10.3",
     "uuid": "^9.0.1"
   },
