@@ -93,6 +93,52 @@ export interface Prospect {
   updatedAt?: string;
 }
 
+export interface PlayerGameStat {
+  id: string;
+  goals: number;
+  assists: number;
+  shots: number;
+  blocks: number;
+  pims: number;
+  points: number;
+  game_id: string;
+  opponent: string;
+  game_date: string;
+  team_score: number;
+  opponent_score: number;
+  home_away: string;
+}
+
+export interface PlayerDevelopmentData {
+  gameStats: PlayerGameStat[];
+  totals: {
+    goals: number;
+    assists: number;
+    points: number;
+    shots: number;
+    blocks: number;
+    pims: number;
+    gamesPlayed: number;
+  };
+  lineAssignment: {
+    lineType: string;
+    position: string;
+    lineupName: string;
+  } | null;
+}
+
+export interface PlayerAiReport {
+  overallRating: string;
+  summary: string;
+  strengths: string[];
+  areasToImprove: string[];
+  trend: string;
+  trendAnalysis: string;
+  recommendedDrills: Array<{ name: string; reason: string }>;
+  coachingTips: string[];
+  lineRecommendation: string;
+}
+
 export interface ProspectVideo {
   id: string;
   prospectId: string;
@@ -872,4 +918,30 @@ export async function addProspectVideo(prospectId: string, teamId: string, video
   
   const data = await response.json();
   return data.video;
+}
+
+export async function fetchPlayerDevelopment(playerId: string): Promise<PlayerDevelopmentData> {
+  const response = await fetch(`${API_BASE_URL}/players/${playerId}/development`);
+  if (!response.ok) throw new Error('Failed to fetch player development data');
+  return response.json();
+}
+
+export async function generatePlayerAiReport(
+  playerId: string,
+  playerInfo: Player,
+  totals: PlayerDevelopmentData['totals'],
+  gameStats: PlayerGameStat[],
+  lineAssignment: PlayerDevelopmentData['lineAssignment']
+): Promise<PlayerAiReport> {
+  const response = await fetch(`${API_BASE_URL}/players/${playerId}/ai-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerInfo, totals, gameStats, lineAssignment }),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to generate report');
+  }
+  const data = await response.json();
+  return data.report;
 }

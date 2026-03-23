@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar, TrendingUp, Trophy, Edit2, Plus, X, Save,
   Trash2, AlertTriangle, Clock, Activity,
-  Loader2, Target
+  Loader2, Target, Video, Shield, Users, BarChart3, ChevronRight
 } from 'lucide-react'
 import {
   fetchDashboard, fetchDashboardNotes, fetchTeamStats,
@@ -15,6 +15,7 @@ import LoadingSpinner from './LoadingSpinner'
 
 interface DashboardProps {
   teamId: string
+  onNavigate: (view: string) => void
 }
 
 const inputClass = "w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-ice-400 focus:border-ice-500 focus:ring-2 focus:ring-ice-500/50 transition-all outline-none text-sm"
@@ -47,7 +48,7 @@ function Countdown({ targetDate }: { targetDate: string }) {
   return <span>{timeLeft}</span>
 }
 
-export default function Dashboard({ teamId }: DashboardProps) {
+export default function Dashboard({ teamId, onNavigate }: DashboardProps) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [notes, setNotes] = useState<DashboardNote[]>([])
   const [topStats, setTopStats] = useState<PlayerStats[]>([])
@@ -248,10 +249,32 @@ export default function Dashboard({ teamId }: DashboardProps) {
                       <Countdown targetDate={nextGame.gameDate} />
                     </div>
                   </div>
+                  {/* Quick actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => onNavigate('calendar')}
+                      className="flex-1 py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-ice-300 hover:text-white rounded-lg transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                    >
+                      <Video className="w-3.5 h-3.5" /> Review Game
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => onNavigate('scouting')}
+                      className="flex-1 py-2 text-xs font-bold bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 rounded-lg transition-all flex items-center justify-center gap-1.5 border border-purple-500/20"
+                    >
+                      <Shield className="w-3.5 h-3.5" /> Scout
+                    </motion.button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-6">
                   <p className="text-ice-500 text-sm">No upcoming games</p>
+                  <button onClick={() => onNavigate('calendar')} className="mt-3 text-xs font-semibold text-ice-400 hover:text-ice-200 transition-colors flex items-center gap-1 mx-auto">
+                    <Plus className="w-3 h-3" /> Add a game
+                  </button>
                 </div>
               )}
             </div>
@@ -274,10 +297,19 @@ export default function Dashboard({ teamId }: DashboardProps) {
                     <p className="text-xs font-bold text-green-400 uppercase tracking-wider mb-1">Focus</p>
                     <p className="text-sm font-semibold text-white">⚡ {nextPractice.focus}</p>
                   </div>
+                  <button
+                    onClick={() => onNavigate('calendar')}
+                    className="w-full py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-ice-300 hover:text-white rounded-lg transition-all flex items-center justify-center gap-1.5 border border-white/5 mt-1"
+                  >
+                    <Calendar className="w-3.5 h-3.5" /> View Full Schedule
+                  </button>
                 </div>
               ) : (
                 <div className="text-center py-6">
                   <p className="text-ice-500 text-sm">No upcoming practices</p>
+                  <button onClick={() => onNavigate('calendar')} className="mt-3 text-xs font-semibold text-ice-400 hover:text-ice-200 transition-colors flex items-center gap-1 mx-auto">
+                    <Plus className="w-3 h-3" /> Add a practice
+                  </button>
                 </div>
               )}
             </div>
@@ -296,8 +328,16 @@ export default function Dashboard({ teamId }: DashboardProps) {
             </div>
             <div className="p-5">
               {injuredPlayersList.length === 0 ? (
-                <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
-                  <span>✓</span> Full strength — no injuries!
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
+                    <span>✓</span> Full strength — no injuries!
+                  </div>
+                  <button
+                    onClick={() => onNavigate('team')}
+                    className="w-full py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-ice-300 hover:text-white rounded-lg transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                  >
+                    <Users className="w-3.5 h-3.5" /> View Roster
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -312,6 +352,12 @@ export default function Dashboard({ teamId }: DashboardProps) {
                       </div>
                     </motion.div>
                   ))}
+                  <button
+                    onClick={() => onNavigate('team')}
+                    className="w-full py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-ice-300 hover:text-white rounded-lg transition-all flex items-center justify-center gap-1.5 border border-white/5 mt-1"
+                  >
+                    <Users className="w-3.5 h-3.5" /> Manage Roster
+                  </button>
                 </div>
               )}
             </div>
@@ -375,6 +421,9 @@ export default function Dashboard({ teamId }: DashboardProps) {
               {topStats.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-ice-500 text-sm">No stats recorded yet</p>
+                  <button onClick={() => onNavigate('games')} className="mt-3 text-xs font-semibold text-ice-400 hover:text-ice-200 transition-colors flex items-center gap-1 mx-auto">
+                    <ChevronRight className="w-3 h-3" /> Record game stats
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -403,6 +452,12 @@ export default function Dashboard({ teamId }: DashboardProps) {
                       </motion.div>
                     )
                   })}
+                  <button
+                    onClick={() => onNavigate('stats')}
+                    className="w-full py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-ice-300 hover:text-white rounded-lg transition-all flex items-center justify-center gap-1.5 border border-white/5 mt-1"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" /> Full Stats Dashboard
+                  </button>
                 </div>
               )}
             </div>

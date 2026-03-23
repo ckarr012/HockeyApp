@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Video, Users, Calendar, Clipboard, BarChart3, Activity, Search, UserPlus, Bell, Menu, LogOut, X } from 'lucide-react'
+import { Home, Video, Users, Calendar, Clipboard, BarChart3, Activity, Search, UserPlus, Bell, Menu, LogOut, X, Layout, Layers } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import VideoLibrary from './components/VideoLibrary'
 import Roster from './components/Roster'
@@ -40,9 +40,9 @@ function App() {
     { id: 'recruiting', name: 'Recruiting', icon: UserPlus },
     { id: 'videos', name: 'Video', icon: Video },
     { id: 'team', name: 'Team', icon: Users },
-    { id: 'lineups', name: 'Lineups', icon: Users },
+    { id: 'lineups', name: 'Lineups', icon: Layers },
     { id: 'trainingroom', name: 'Training Room', icon: Activity },
-    { id: 'games', name: 'Games', icon: Calendar },
+    { id: 'games', name: 'Games', icon: Layout },
     { id: 'practice', name: 'Practice', icon: Clipboard },
     { id: 'stats', name: 'Stats', icon: BarChart3 },
   ]
@@ -50,7 +50,7 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard teamId={user.teamId} />
+        return <Dashboard teamId={user.teamId} onNavigate={setCurrentView} />
       case 'calendar':
         return <CalendarView teamId={user.teamId} />
       case 'scouting':
