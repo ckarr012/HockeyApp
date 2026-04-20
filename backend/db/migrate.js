@@ -219,6 +219,21 @@ const migrations = [
     shots INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (team_id) REFERENCES teams(id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS matchup_analyses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id TEXT NOT NULL,
+    game_id TEXT,
+    opponent_name TEXT NOT NULL,
+    lineup_id TEXT NOT NULL,
+    analysis_json TEXT NOT NULL,
+    summary TEXT,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (game_id) REFERENCES games(id),
+    FOREIGN KEY (lineup_id) REFERENCES lineups(id)
   )`
 ];
 

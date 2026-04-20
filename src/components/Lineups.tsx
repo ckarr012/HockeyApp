@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Save, Plus, Trash2, Loader2, ChevronDown, X, AlertTriangle } from 'lucide-react'
-import { fetchLineups, fetchPlayers, createLineup, updateLineup, deleteLineup, Player, Lineup } from '../api/api'
+import { Save, Plus, Trash2, Loader2, ChevronDown, X, AlertTriangle, Sparkles } from 'lucide-react'
+import { fetchLineups, fetchPlayers, createLineup, updateLineup, deleteLineup, Player, Lineup, getScoutedOpponents, generateMatchupAnalysis, getMatchupAnalyses } from '../api/api'
 import LoadingSpinner from './LoadingSpinner'
+import MatchupAnalysisResults from './MatchupAnalysisResults'
 
 interface LineupsProps {
   teamId: string
@@ -59,10 +60,25 @@ const LINE_COLORS: Record<string, string> = {
 const extractSlotIds = (lineup: Lineup): LocalSlots => {
   const result: LocalSlots = {}
   if (!lineup.slots) return result
+  
+  // Map backend position keys to frontend keys
+  const positionKeyMap: Record<string, string> = {
+    'center': 'c',
+    'left_wing': 'lw',
+    'right_wing': 'rw',
+    'left_defense': 'ld',
+    'right_defense': 'rd',
+    'starter': 'starter',
+    'backup': 'backup',
+    'f1': 'f1',
+    'f2': 'f2'
+  }
+  
   for (const [lineType, positions] of Object.entries(lineup.slots)) {
     result[lineType] = {}
     for (const [pos, player] of Object.entries(positions as Record<string, any>)) {
-      result[lineType][pos] = player?.id || null
+      const frontendKey = positionKeyMap[pos] || pos
+      result[lineType][frontendKey] = player?.id || null
     }
   }
   return result
@@ -96,7 +112,41 @@ export default function Lineups({ teamId }: LineupsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // ── AI MATCHUP OPTIMIZER STATE ──
+  const [scoutedOpponents, setScoutedOpponents] = useState<string[]>([])
+  const [selectedOpponent, setSelectedOpponent] = useState<string>('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [matchupError, setMatchupError] = useState<string | null>(null)
+  const [lastAnalysis, setLastAnalysis] = useState<any | null>(null)
+  const [pastAnalyses, setPastAnalyses] = useState<any[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+
   useEffect(() => { loadData() }, [teamId])
+
+  // Load scouted opponents and past analyses on mount
+  useEffect(() => {
+    const loadOpponents = async () => {
+      try {
+        const opponents = await getScoutedOpponents(teamId)
+        setScoutedOpponents(opponents)
+        if (opponents.length > 0 && !selectedOpponent) {
+          setSelectedOpponent(opponents[0])
+        }
+      } catch (err) {
+        console.error('Failed to load scouted opponents:', err)
+      }
+    }
+    const loadPastAnalyses = async () => {
+      try {
+        const analyses = await getMatchupAnalyses(teamId)
+        setPastAnalyses(analyses)
+      } catch (err) {
+        console.error('Failed to load past analyses:', err)
+      }
+    }
+    loadOpponents()
+    loadPastAnalyses()
+  }, [teamId])
 
   const loadData = async () => {
     try {
@@ -178,6 +228,37 @@ export default function Lineups({ teamId }: LineupsProps) {
     }
   }
 
+  // ── AI MATCHUP OPTIMIZER HANDLER ──
+  const handleAnalyzeMatchups = async () => {
+    if (!selectedLineupId || !selectedOpponent) return
+    
+    try {
+      setIsAnalyzing(true)
+      setMatchupError(null)
+      
+      const response = await generateMatchupAnalysis(teamId, {
+        teamId,
+        lineupId: selectedLineupId,
+        opponentName: selectedOpponent,
+        gameId: null
+      })
+      
+      // Strip the message wrapper - store only the analysis object
+      setLastAnalysis(response.analysis)
+      console.log('🏒 AI Matchup Analysis Generated:', response)
+      
+      // Reload past analyses to include the new one
+      const analyses = await getMatchupAnalyses(teamId)
+      setPastAnalyses(analyses)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate matchup analysis'
+      setMatchupError(errorMessage)
+      console.error('Matchup analysis error:', err)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
   const selectedLineup = lineups.find(l => l.id === selectedLineupId) || null
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -252,6 +333,168 @@ export default function Lineups({ teamId }: LineupsProps) {
           )}
         </div>
       </div>
+
+      {/* ── AI MATCHUP OPTIMIZER ── */}
+      {selectedLineupId && (
+        <div className="glass-strong rounded-xl p-5 mb-6 border border-ice-500/20 bg-gradient-to-br from-ice-500/5 to-purple-500/5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-ice-400" />
+            <h3 className="text-lg font-bold text-white">AI Matchup Optimizer</h3>
+            <span className="text-xs text-ice-400 bg-white/10 px-2 py-0.5 rounded-full">Powered by Claude</span>
+          </div>
+
+          <div className="space-y-4">
+            {/* Opponent selector */}
+            <div>
+              <label className="block text-sm font-semibold text-ice-300 mb-2">
+                Analyze against opponent
+              </label>
+              {scoutedOpponents.length === 0 ? (
+                <div className="glass-strong rounded-lg p-4 border border-yellow-500/30 bg-yellow-500/5">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-yellow-300 text-sm font-semibold">No scouted opponents yet</p>
+                      <p className="text-yellow-400/80 text-xs mt-1">Scout an opponent via ACHA Sync to enable matchup analysis</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={selectedOpponent}
+                    onChange={(e) => setSelectedOpponent(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-ice-500/50 focus:border-ice-500/50 transition-all appearance-none pr-10"
+                  >
+                    {scoutedOpponents.map(opponent => (
+                      <option key={opponent} value={opponent} className="bg-slate-800">
+                        {opponent}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-ice-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              )}
+            </div>
+
+            {/* Analyze button and View Past button */}
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: scoutedOpponents.length === 0 || isAnalyzing ? 1 : 1.02 }}
+                whileTap={{ scale: scoutedOpponents.length === 0 || isAnalyzing ? 1 : 0.98 }}
+                onClick={handleAnalyzeMatchups}
+                disabled={scoutedOpponents.length === 0 || !selectedOpponent || isAnalyzing}
+                className="flex-1 px-5 py-3 rounded-lg font-semibold shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-ice-500 to-purple-600 text-white"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyzing matchups...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Analyze Matchups
+                  </>
+                )}
+              </motion.button>
+              
+              {pastAnalyses.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="px-4 py-3 rounded-lg font-semibold border border-ice-500/40 hover:border-ice-500/60 text-ice-300 hover:text-white transition-all flex items-center gap-2"
+                >
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+                  View Past ({pastAnalyses.length})
+                </motion.button>
+              )}
+            </div>
+
+            {/* Past Analyses History */}
+            <AnimatePresence>
+              {showHistory && pastAnalyses.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="glass-strong rounded-lg p-4 border border-white/10 max-h-64 overflow-y-auto space-y-2">
+                    {pastAnalyses.map((analysis) => {
+                      const timeAgo = new Date(analysis.generated_at + 'Z').toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      const summaryPreview = analysis.summary?.split('\n')[0].substring(0, 80) + '...'
+                      
+                      return (
+                        <div
+                          key={analysis.id}
+                          className="flex items-start justify-between gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-white font-semibold text-sm">vs {analysis.opponent_name}</span>
+                              <span className="text-ice-500 text-xs" title={new Date(analysis.generated_at + 'Z').toLocaleString()}>
+                                {timeAgo}
+                              </span>
+                            </div>
+                            <p className="text-ice-400 text-xs truncate">{summaryPreview}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setLastAnalysis(analysis)
+                              setShowHistory(false)
+                            }}
+                            className="px-3 py-1.5 text-xs font-semibold bg-ice-500/20 hover:bg-ice-500/30 text-ice-300 hover:text-white rounded transition-all shrink-0"
+                          >
+                            Load
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Error state */}
+            {matchupError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-strong rounded-lg p-4 border border-goal-500/30 bg-goal-500/10"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-goal-300 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-goal-300 font-semibold text-sm">{matchupError}</p>
+                  </div>
+                  <button
+                    onClick={() => setMatchupError(null)}
+                    className="text-goal-400 hover:text-goal-300 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Matchup Analysis Results */}
+            {lastAnalysis && (
+              <MatchupAnalysisResults 
+                analysis={lastAnalysis} 
+                onDismiss={() => setLastAnalysis(null)} 
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* No lineups */}
       {lineups.length === 0 && (

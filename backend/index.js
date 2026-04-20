@@ -13,6 +13,7 @@ const scoutingRoutes = require('./routes/scoutingRoutes');
 const recruitingRoutes = require('./routes/recruitingRoutes');
 const dashboardNotesRoutes = require('./routes/dashboardNotesRoutes');
 const achaRoutes = require('./routes/achaRoutes');
+const matchupRoutes = require('./routes/matchupRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,6 +37,7 @@ app.use('/api/teams', dashboardNotesRoutes);
 app.use('/api', recruitingRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/acha', achaRoutes);
+app.use('/api/teams', matchupRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

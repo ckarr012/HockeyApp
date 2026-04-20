@@ -9,6 +9,7 @@ const {
   deleteScoutingReport
 } = require('../models/scoutingModel');
 const { getTeamById } = require('../models/teamModel');
+const { getDb } = require('../db/database');
 
 const getReports = async (req, res) => {
   try {
@@ -195,11 +196,33 @@ Extract key player info from the notes if mentioned. Include up to 3 key players
   }
 };
 
+const getScoutedOpponents = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    const db = await getDb();
+    const result = db.exec(
+      'SELECT DISTINCT opponent_name FROM opponent_rosters WHERE team_id = ? ORDER BY opponent_name ASC',
+      [teamId]
+    );
+    
+    const opponents = result.length > 0 && result[0].values.length > 0
+      ? result[0].values.map(row => row[0])
+      : [];
+    
+    res.json({ opponents });
+  } catch (error) {
+    console.error('Error in getScoutedOpponents:', error);
+    res.status(500).json({ error: 'Failed to fetch scouted opponents' });
+  }
+};
+
 module.exports = {
   getReports,
   getReportByGame,
   createReport,
   updateReport,
   deleteReport,
-  generateAiScoutingReport
+  generateAiScoutingReport,
+  getScoutedOpponents
 };

@@ -1117,3 +1117,40 @@ export async function generateScoutingFromAcha(
   const data = await response.json();
   return data.report;
 }
+
+// ── AI LINE MATCHUP OPTIMIZER ──
+export async function getScoutedOpponents(teamId: string): Promise<string[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/scouted-opponents`);
+  if (!response.ok) throw new Error('Failed to fetch scouted opponents');
+  const data = await response.json();
+  return data.opponents;
+}
+
+export async function generateMatchupAnalysis(
+  teamId: string,
+  body: {
+    teamId: string;
+    lineupId: string;
+    opponentName: string;
+    gameId?: string | null;
+  }
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/matchups/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error ?? 'Failed to generate matchup analysis');
+  }
+  const data = await response.json();
+  return data;
+}
+
+export async function getMatchupAnalyses(teamId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/teams/${teamId}/matchups`);
+  if (!response.ok) throw new Error('Failed to fetch matchup analyses');
+  const data = await response.json();
+  return data.analyses || [];
+}
