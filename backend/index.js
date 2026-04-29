@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
+const authRoutesV2 = require('./routes/authRoutesV2');
 const teamRoutes = require('./routes/teamRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const practiceRoutes = require('./routes/practiceRoutes');
@@ -14,6 +15,7 @@ const recruitingRoutes = require('./routes/recruitingRoutes');
 const dashboardNotesRoutes = require('./routes/dashboardNotesRoutes');
 const achaRoutes = require('./routes/achaRoutes');
 const matchupRoutes = require('./routes/matchupRoutes');
+const { loginLimiter, mfaLimiter, registrationLimiter, smsLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,6 +28,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/v2', authRoutesV2);
 app.use('/api/teams', teamRoutes);
 app.use('/api/teams', videoRoutes);
 app.use('/api/teams', practiceRoutes);
@@ -48,15 +51,12 @@ app.listen(PORT, () => {
   console.log(`🏒 Hockey App Backend running on http://localhost:${PORT}`);
   console.log(`📊 API endpoints available:`);
   console.log(`   - GET  http://localhost:${PORT}/api/health`);
-  console.log(`   - POST http://localhost:${PORT}/api/auth/login`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/login (legacy)`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/v2/register (NEW)`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/v2/login (NEW with MFA)`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/v2/verify-mfa (NEW)`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/v2/mfa/start (NEW)`);
+  console.log(`   - POST http://localhost:${PORT}/api/auth/v2/mfa/complete (NEW)`);
   console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/players`);
   console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/dashboard`);
-  console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/videos`);
-  console.log(`   - POST http://localhost:${PORT}/api/teams/:teamId/videos`);
-  console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/practices`);
-  console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/lineups`);
-  console.log(`   - POST http://localhost:${PORT}/api/teams/:teamId/lineups`);
-  console.log(`   - PUT  http://localhost:${PORT}/api/teams/lineups/:lineupId`);
-  console.log(`   - GET  http://localhost:${PORT}/api/teams/:teamId/stats`);
-  console.log(`   - POST http://localhost:${PORT}/api/teams/games/:gameId/stats`);
 });
